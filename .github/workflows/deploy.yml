@@ -81,6 +81,39 @@ jobs:
           fi
           echo "args=${EXCLUDES}" >> "$GITHUB_OUTPUT"
 
+      # Parent (SFTP_REMOTE_PATH) must already exist. OpenSSH `put -r` still fails with
+      # "path canonicalization failed" when child dirs are missing on a first/empty deploy.
+      - name: Ensure remote directories exist
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+          REMOTE="${SFTP_REMOTE_PATH%/}"
+          # Fail fast if the project root is missing — that is a config/hosting error.
+          sshpass -e ssh -o StrictHostKeyChecking=no -p "$SFTP_PORT" \
+            "${SFTP_USERNAME}@${SFTP_HOST}" \
+            "test -d \"$REMOTE\" || { echo \"ERROR: SFTP_REMOTE_PATH does not exist: $REMOTE\" >&2; exit 1; }"
+          sshpass -e ssh -o StrictHostKeyChecking=no -p "$SFTP_PORT" \
+            "${SFTP_USERNAME}@${SFTP_HOST}" \
+            "mkdir -p \
+              \"$REMOTE/assets\" \
+              \"$REMOTE/bin\" \
+              \"$REMOTE/config\" \
+              \"$REMOTE/data\" \
+              \"$REMOTE/migrations\" \
+              \"$REMOTE/public\" \
+              \"$REMOTE/src\" \
+              \"$REMOTE/templates\" \
+              \"$REMOTE/translations\" \
+              \"$REMOTE/var\" \
+              \"$REMOTE/vendor\""
+
       - name: Deploy via SFTP
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
