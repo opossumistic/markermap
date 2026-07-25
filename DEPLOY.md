@@ -30,6 +30,7 @@ APP_SECRET=<langes-zufaelliges-geheimnis>
 DATABASE_URL="sqlite:///%kernel.project_dir%/var/data/app.db"
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 GEOCODER_USER_AGENT="tauschmap/1.0 (https://deine-domain.tld; kontakt@deine-domain.tld)"
+ADMIN_USERNAME=markermap-mod
 # bcrypt/argon hash — erzeugen: php -r "echo password_hash('DEIN_PASSWORT', PASSWORD_DEFAULT);"
 ADMIN_PASSWORD='$2y$...'
 MIGRATE_TOKEN=<langes-zufaelliges-token>

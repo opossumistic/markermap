@@ -58,6 +58,7 @@ jobs:
           APP_SECRET: ci-build-only-not-used-in-prod
           DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data/ci.db"
           MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
+          ADMIN_USERNAME: ci
           ADMIN_PASSWORD: unused
           GEOCODER_USER_AGENT: "tauschmap-ci/0.1"
           MIGRATE_TOKEN: unused

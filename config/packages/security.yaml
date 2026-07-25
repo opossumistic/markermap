@@ -3,13 +3,8 @@ security:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: auto
 
     providers:
-        admin_memory:
-            memory:
-                users:
-                    admin:
-                        # Value of ADMIN_PASSWORD must be a password_hash() string (bcrypt/argon).
-                        password: '%env(ADMIN_PASSWORD)%'
-                        roles: ['ROLE_ADMIN']
+        admin_env:
+            id: App\Security\EnvAdminUserProvider
 
     firewalls:
         dev:
@@ -17,9 +12,9 @@ security:
             security: false
         admin:
             pattern: ^/admin
-            provider: admin_memory
+            provider: admin_env
             http_basic:
-                realm: Tauschmap Admin
+                realm: MarkerMap Admin
         main:
             lazy: true
             security: false
