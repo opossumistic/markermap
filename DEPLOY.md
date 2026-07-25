@@ -1,10 +1,10 @@
-# Deploy (Shared Hosting, FTP only)
+# Deploy (Shared Hosting, SFTP — analog Jobboard)
 
 ## Server-Layout (Produktion)
 
 | Rolle | Pfad |
 |---|---|
-| FTP-Deploy-Ziel (`FTP_SERVER_DIR`) = Symfony-Projektwurzel | `/public_html/markermap` |
+| SFTP-Deploy-Ziel (`SFTP_REMOTE_PATH`) = Symfony-Projektwurzel | `/public_html/markermap` |
 | Web-Docroot (Hoster muss hierhin zeigen) | `/public_html/markermap/public` |
 
 Deploy lädt die App nach `markermap/`; darunter entstehen `public/`, `src/`, `vendor/`, `var/` usw. Zeigt der Hoster nur auf `/public_html/markermap` (ohne `/public`), liegen Secrets und Code im Webroot — das ist falsch.
@@ -39,26 +39,28 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
 
 5. Nach erstem Code-Upload Migration auslösen (siehe unten).
 
-## GitHub Secrets
+## GitHub Secrets (wie Jobboard)
 
 | Secret | Bedeutung |
 |---|---|
-| `FTP_SERVER` | Hostname |
-| `FTP_USERNAME` | FTP-User |
-| `FTP_PASSWORD` | FTP-Passwort |
-| `FTP_SERVER_DIR` | `/public_html/markermap/` (Projektwurzel, trailing slash wie vom Hoster erwartet) |
+| `SFTP_HOST` | Hostname |
+| `SFTP_PORT` | Port (meist `22`) |
+| `SFTP_USERNAME` | SFTP-User |
+| `SFTP_PASSWORD` | SFTP-Passwort |
+| `SFTP_REMOTE_PATH` | `/public_html/markermap` (Projektwurzel) |
 
-Deploy: Push auf `main` oder manuell unter **Actions → Deploy FTP → Run workflow**.
+Alte `FTP_*`-Secrets werden nicht mehr gelesen — können weg.
+
+Deploy: Push auf `main` oder manuell unter **Actions → Deploy → Run workflow**.
 
 ## Excludes (wichtig)
 
-Die Pipeline **überschreibt/löscht nicht**:
+Die Pipeline überspringt u. a.:
 
-- `var/data/**` (SQLite)
-- `public/uploads/locations/**` (Fotos)
-- `.env.local`
-
-`dangerous-clean-slate` ist bewusst `false`.
+- `var/data` (SQLite)
+- `public/uploads/locations` (Fotos)
+- `.env*` (Server-`.env.local` bleibt)
+- `vendor` (wenn `composer.lock` unverändert seit letztem erfolgreichen Deploy)
 
 ## Migrationen ohne SSH
 

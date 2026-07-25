@@ -101,7 +101,7 @@
             </div>
 
             <div class="map-sheet__body map-sheet__add" data-map-shell-target="correctPanel" hidden>
-                <p class="picker-status">Aktuelle Infos sind vorausgefüllt. Änderungen erscheinen erst nach Moderations-Freigabe.</p>
+                <p class="picker-status">Infos vorausgefüllt — Standort bleibt. Andere Position = neuer Eintrag. Sichtbar nach Freigabe.</p>
 
                 {{ form_start(correctionForm, { action: path('location_correct'), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
                     {{ form_errors(correctionForm) }}

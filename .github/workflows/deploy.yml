@@ -1,13 +1,12 @@
-name: Deploy FTP
+name: Deploy
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: deploy-ftp
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -15,24 +14,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Compute composer.lock hash
+        id: lock-hash
+        run: |
+          echo "current_hash=$(sha256sum composer.lock | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore deploy metadata
+        uses: actions/cache/restore@v4
+        id: deploy-meta
+        with:
+          path: .deploy-meta
+          key: deploy-meta-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
+
+      - name: Check if vendor upload is needed
+        id: vendor-check
+        run: |
+          CURRENT="${{ steps.lock-hash.outputs.current_hash }}"
+          CACHE_HIT="${{ steps.deploy-meta.outputs.cache-hit }}"
+          echo "current_hash=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "cache_hit=$CACHE_HIT"
+          # Exact cache key includes composer.lock hash — hit means this lock was deployed successfully before.
+          if [ "$CACHE_HIT" = "true" ]; then
+            echo "deploy_vendor=false" >> "$GITHUB_OUTPUT"
+            echo "composer.lock unchanged — skipping vendor upload (~5000 files)."
+          else
+            echo "deploy_vendor=true" >> "$GITHUB_OUTPUT"
+            echo "composer.lock changed or no deploy cache — vendor will be uploaded."
+          fi
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: '8.2'
           extensions: ctype, iconv, mbstring, sqlite3, pdo_sqlite, intl
-          coverage: none
           tools: composer:v2
+          coverage: none
 
-      - name: Install Composer dependencies (prod)
-        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-        env:
-          APP_ENV: prod
-          APP_SECRET: ci-build-only-not-used-in-prod
-
-      - name: Compile AssetMapper assets
-        run: php bin/console asset-map:compile
+      - name: Install dependencies
         env:
           APP_ENV: prod
           APP_SECRET: ci-build-only-not-used-in-prod
@@ -43,37 +63,46 @@ jobs:
           MIGRATE_TOKEN: unused
           MAILER_DSN: "null://null"
           MESSENGER_TRANSPORT_DSN: "in-memory://"
+        run: |
+          composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+          php bin/console asset-map:compile --env=prod
 
       - name: Ensure runtime directories exist in artifact
         run: |
           mkdir -p var/cache var/log var/data/backups public/uploads/locations
           touch var/data/.gitkeep public/uploads/locations/.gitkeep
 
-      - name: FTP sync
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+      - name: Prepare SFTP excludes
+        id: rsync
+        run: |
+          EXCLUDES="--exclude=.git* --exclude=.github --exclude=.ddev --exclude=var/cache --exclude=var/log --exclude=var/data --exclude=public/uploads/locations --exclude=.env* --exclude=tests --exclude=tauschbox-hamburg-shared-hosting-konzept.md"
+          if [ "${{ steps.vendor-check.outputs.deploy_vendor }}" != "true" ]; then
+            EXCLUDES="${EXCLUDES} --exclude=vendor"
+          fi
+          echo "args=${EXCLUDES}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
-          protocol: ftp
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.ddev/**
-            **/.github/**
-            **/tests/**
-            **/var/cache/**
-            **/var/log/**
-            **/var/data/**
-            **/public/uploads/locations/**
-            **/.env.local
-            **/.env.*.local
-            **/phpunit.xml*
-            **/.phpunit.cache/**
-            **/tauschbox-hamburg-shared-hosting-konzept.md
-            **/agent-transcripts/**
-            **/.cursor/**
-            **/var/tmp-seed/**
+          server: ${{ secrets.SFTP_HOST }}
+          port: ${{ secrets.SFTP_PORT }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          ssh_private_key: ''
+          local_path: .
+          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
+          sftp_only: true
+          rsyncArgs: ${{ steps.rsync.outputs.args }}
+
+      - name: Remember deployed composer.lock hash
+        if: success()
+        run: |
+          mkdir -p .deploy-meta
+          echo "${{ steps.vendor-check.outputs.current_hash }}" > .deploy-meta/composer.lock.sha
+
+      - name: Save deploy metadata
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: .deploy-meta
+          key: deploy-meta-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
