@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Datenschutz — Tauschmap{% endblock %}
+
+{% block body %}
+<main class="legal">
+    <p><a href="{{ path('home') }}">← Zur Karte</a></p>
+    <h1>Datenschutz</h1>
+    <p><em>Platzhalter — vor Go-Live rechtlich prüfen und vervollständigen.</em></p>
+    <h2>Verantwortliche Stelle</h2>
+    <p>Siehe <a href="{{ path('legal_impressum') }}">Impressum</a>.</p>
+    <h2>Welche Daten wir verarbeiten</h2>
+    <ul>
+        <li>Vorschläge zu Tauschboxen (Adresse, Koordinaten, optionales Foto, optionale E-Mail für Rückfragen)</li>
+        <li>Technische Server-Logs (IP, Zeitpunkt, User-Agent) in üblichem Umfang</li>
+        <li>Session-Cookie für Flash-Meldungen und CSRF-Schutz</li>
+    </ul>
+    <h2>Zweck / Rechtsgrundlage</h2>
+    <p>Betrieb der Community-Karte und Moderationsprozess. Rechtsgrundlage typischerweise berechtigtes Interesse bzw. Einwilligung bei optionaler E-Mail/Foto — bitte rechtlich finalisieren.</p>
+    <h2>Speicherdauer</h2>
+    <p>Live-Einträge solange öffentlich; abgelehnte / entfernte Einträge soft-deleted. Uploads unter `public/uploads/`.</p>
+    <h2>Drittanbieter</h2>
+    <ul>
+        <li>Kartenkacheln / Style: OpenFreeMap (Browser lädt Tiles für die Kartendarstellung)</li>
+        <li>Geocoding: Nominatim/OpenStreetMap (serverseitig, mit eigenem User-Agent)</li>
+        <li>Kartenbibliothek MapLibre: self-hosted unter dieser Domain (kein CDN)</li>
+    </ul>
+    <h2>Rechte</h2>
+    <p>Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch — Kontakt siehe Impressum.</p>
+</main>
+{% endblock %}

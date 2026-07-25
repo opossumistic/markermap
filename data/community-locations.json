@@ -1,0 +1,295 @@
+{
+  "meta": {
+    "generated_for": "tauschmap seed",
+    "notes": "Nur Tauschboxen (category=other). Bücherzellen und klar buch-fokussierte Regale ausgeschlossen. Ottensen Große Rainstraße als removed.",
+    "count": 26
+  },
+  "locations": [
+    {
+      "title": "Tauschbox",
+      "street": "Virchowstraße / Ecke Chemnitzstraße",
+      "district": "Altona-Altstadt",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.5533451,
+      "lng": 9.9478999
+    },
+    {
+      "title": "Tauschhaus",
+      "street": "Glücksburger Platz",
+      "district": "Altona-Nord",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.569608,
+      "lng": 9.9492742
+    },
+    {
+      "title": "Tauschbox am Markt",
+      "street": "Mühlenberger Weg 64a",
+      "district": "Blankenese",
+      "postal_code": null,
+      "description": "Vorplatz der Blankeneser Kirche am Markt",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5616053,
+      "lng": 9.8131697
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Bramfelder Chaussee 46, Ecke Harmsweg",
+      "district": "Bramfeld",
+      "postal_code": null,
+      "description": "kleine Tauschbox, meistens mit Büchern",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5957742,
+      "lng": 10.0624292
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Elsässer Str. 15",
+      "district": "Dulsberg",
+      "postal_code": null,
+      "description": "Nachbarschaftstreff",
+      "category": "other",
+      "status": "active",
+      "lat": 53.58324,
+      "lng": 10.0622489
+    },
+    {
+      "title": "Tauschbox am Marktmeisterhaus",
+      "street": "Elsässer Platz 1",
+      "district": "Dulsberg",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.5791531,
+      "lng": 10.0645411
+    },
+    {
+      "title": "Tauschbox Schäferstraße",
+      "street": "Schäferstraße 24 - 26",
+      "district": "Eimsbüttel",
+      "postal_code": null,
+      "description": "",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5672653,
+      "lng": 9.9676234
+    },
+    {
+      "title": "Tauschhaus",
+      "street": "Stellinger Weg 30 / Ecke Hellkamp",
+      "district": "Eimsbüttel",
+      "postal_code": null,
+      "description": "Eimsbütteler Tausch-Schrank für Bücher, CDs, Kleidung, Spielzeug, Schuhe",
+      "category": "other",
+      "status": "active",
+      "lat": 53.579473,
+      "lng": 9.9493583
+    },
+    {
+      "title": "Roter Glasschrank",
+      "street": "Tarpenbekstraße 123",
+      "district": "Eppendorf",
+      "postal_code": null,
+      "description": "An einem privaten Wohnhaus",
+      "category": "other",
+      "status": "active",
+      "lat": 53.599462,
+      "lng": 9.9835065
+    },
+    {
+      "title": "Tauschhaus Farmsen",
+      "street": "Vom-Berge-Weg 25",
+      "district": "Farmsen",
+      "postal_code": null,
+      "description": "Immer offen, in einer Art Gewächshaus",
+      "category": "other",
+      "status": "active",
+      "lat": 53.6060606,
+      "lng": 10.112789
+    },
+    {
+      "title": "Fairschenkebox im Hammer Park",
+      "street": "Caspar-Voght-Strasse 35c",
+      "district": "Hamm",
+      "postal_code": null,
+      "description": "Zugang Haus der Jugend",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5591512,
+      "lng": 10.059785
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Horner Weg 17",
+      "district": "Hamm",
+      "postal_code": null,
+      "description": "unweit der Kirchengemeinde zu Hamburg Hamm",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5562952,
+      "lng": 10.0577904
+    },
+    {
+      "title": "Tauschbox am Elbschloss an der Bille",
+      "street": "Osterbrookplatz 26",
+      "district": "Hamm",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.5468762,
+      "lng": 10.057507
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Manshardtstraße 105",
+      "district": "Horn",
+      "postal_code": null,
+      "description": "bei der Philippuskirche",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5591234,
+      "lng": 10.1049016
+    },
+    {
+      "title": "Tauschregal",
+      "street": "Marktstraße / Laeizstraße",
+      "district": "Karolinenviertel",
+      "postal_code": null,
+      "description": "sehr einfaches Tauschregal",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5581294,
+      "lng": 9.968935
+    },
+    {
+      "title": "Tauschbörse",
+      "street": "Jugendparkweg / Westerrode",
+      "district": "Langenhorn",
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.6456073,
+      "lng": 9.9934983,
+      "postal_code": null
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Hagendeel / Oddernskamp",
+      "district": "Lokstedt",
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.6011339,
+      "lng": 9.9519584,
+      "postal_code": null
+    },
+    {
+      "title": "Tauschhaus Lurup",
+      "street": "Elbgaustraße 120",
+      "district": "Lurup",
+      "postal_code": null,
+      "description": "Vom Buch über Schnick Schnack bis hin zu Haushaltsartikeln",
+      "category": "other",
+      "status": "active",
+      "lat": 53.6015069,
+      "lng": 9.8882332
+    },
+    {
+      "title": "Tauschregal Niendorf-Nord",
+      "street": "Reinhold-Meyer-Straße 21",
+      "district": "Niendorf",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.6460645,
+      "lng": 9.9509401
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Große Rainstraße 9",
+      "district": "Ottensen",
+      "postal_code": null,
+      "description": "Laut Bezirksamt Altona 2024 abgeräumt (Vermüllung).",
+      "category": "other",
+      "status": "removed",
+      "lat": 53.5526017,
+      "lng": 9.9305072
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Alexanderstraße 16",
+      "district": "St. Georg",
+      "postal_code": null,
+      "description": "vor dem Kulturladen St. Georg",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5548905,
+      "lng": 10.0190873
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Lange Reihe 75 A",
+      "district": "St. Georg",
+      "postal_code": null,
+      "description": "Tauschbox im Durchgang zum Kunsthandwerkerhaus Koppel 66",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5581892,
+      "lng": 10.0116328
+    },
+    {
+      "title": "Freebox",
+      "street": "Paulinenplatz",
+      "district": "St. Pauli",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.554033,
+      "lng": 9.9628251
+    },
+    {
+      "title": "Tauschbox Zomia",
+      "street": "Altonaer Straße (Bauwagenplatz Zomia)",
+      "district": "Sternschanze",
+      "postal_code": null,
+      "description": "am Bauwagenplatz Zomia",
+      "category": "other",
+      "status": "active",
+      "lat": 53.5618,
+      "lng": 9.9642
+    },
+    {
+      "title": "Tauschbox Tegelsbarg",
+      "street": "Tegelsbarg 2b",
+      "district": "Tegelsbarg",
+      "postal_code": null,
+      "description": "Parkplatz Haus der Jugend; Kleidung, Schuhe, Hausrat",
+      "category": "other",
+      "status": "active",
+      "lat": 53.6594833,
+      "lng": 10.0599085
+    },
+    {
+      "title": "Tauschbox",
+      "street": "Fährstraße / Ecke Sanitastraße",
+      "district": "Wilhelmsburg",
+      "postal_code": null,
+      "description": null,
+      "category": "other",
+      "status": "active",
+      "lat": 53.5170238,
+      "lng": 9.9821124
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Impressum — Tauschmap{% endblock %}
+
+{% block body %}
+<main class="legal">
+    <p><a href="{{ path('home') }}">← Zur Karte</a></p>
+    <h1>Impressum</h1>
+    <p><em>Platzhalter — vor Go-Live durch echte Angaben ersetzen (TMG).</em></p>
+    <p>
+        Betreiber: [Name]<br>
+        Anschrift: [Straße, PLZ Ort]<br>
+        E-Mail: [kontakt@beispiel.de]
+    </p>
+    <h2>Haftung für Inhalte / Links</h2>
+    <p>Inhalte dieser Community-Karte werden nach bestem Wissen gepflegt; für Vollständigkeit und Aktualität einzelner Einträge wird keine Gewähr übernommen. Externe Links liegen in der Verantwortung der jeweiligen Anbieter.</p>
+    <h2>Kartendaten</h2>
+    <p>Kartendarstellung mit MapLibre; Basemap OpenFreeMap / OpenStreetMap-Mitwirkende. © OpenStreetMap contributors.</p>
+</main>
+{% endblock %}

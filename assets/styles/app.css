@@ -1,0 +1,439 @@
+:root {
+    --map-ink: #1a1a1a;
+    --map-paper: #f4f1ec;
+    --map-accent: #0b6e4f;
+    --map-disputed: #8a6d3b;
+    --sheet-height: min(48dvh, 28rem);
+    --sheet-width: min(28rem, 100%);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--map-ink);
+    background: var(--map-paper);
+}
+
+.map-shell {
+    position: relative;
+    height: 100dvh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.map-canvas {
+    position: absolute;
+    inset: 0;
+    transition: inset 180ms ease;
+}
+
+.map-shell--sheet-open .map-canvas {
+    bottom: var(--sheet-height);
+}
+
+.map-chrome {
+    position: absolute;
+    z-index: 3;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    pointer-events: none;
+    transition: right 180ms ease;
+}
+
+.map-chrome > * {
+    pointer-events: auto;
+}
+
+.map-brand {
+    background: color-mix(in srgb, var(--map-paper) 92%, transparent);
+    backdrop-filter: blur(6px);
+    padding: 0.55rem 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.map-search {
+    position: relative;
+    flex: 1 1 14rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    min-width: min(100%, 14rem);
+    max-width: 28rem;
+}
+
+.map-search__input {
+    flex: 1 1 10rem;
+    min-width: 0;
+    border: 0;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: color-mix(in srgb, var(--map-paper) 94%, transparent);
+    backdrop-filter: blur(6px);
+    color: var(--map-ink);
+}
+
+.map-search__results {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--map-paper);
+    border: 1px solid #cfc8bc;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+    max-height: 14rem;
+    overflow: auto;
+}
+
+.map-search__hit {
+    display: block;
+    width: 100%;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--map-ink);
+}
+
+.map-search__hit:hover,
+.map-search__hit:focus-visible {
+    background: color-mix(in srgb, var(--map-accent) 12%, var(--map-paper));
+}
+
+.map-search__empty {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.map-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.map-legal {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: flex-end;
+    font-size: 0.8rem;
+}
+
+.map-legal a {
+    color: var(--map-ink);
+    background: color-mix(in srgb, var(--map-paper) 88%, transparent);
+    backdrop-filter: blur(6px);
+    padding: 0.35rem 0.55rem;
+    text-decoration: none;
+}
+
+.map-legal a:hover {
+    text-decoration: underline;
+}
+
+.legal {
+    max-width: 40rem;
+    margin: 2rem auto;
+    padding: 0 1rem 3rem;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+    color: var(--map-ink);
+}
+
+.legal h1 {
+    margin-top: 0;
+}
+
+.map-btn,
+.map-actions a {
+    appearance: none;
+    border: 0;
+    text-decoration: none;
+    color: var(--map-paper);
+    background: var(--map-ink);
+    padding: 0.55rem 0.85rem;
+    font: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.map-actions a.secondary,
+.map-btn.secondary {
+    background: color-mix(in srgb, var(--map-paper) 92%, transparent);
+    color: var(--map-ink);
+}
+
+.map-btn--muted {
+    background: color-mix(in srgb, var(--map-ink) 55%, #888);
+}
+
+.map-detail__actions {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.map-flash {
+    position: fixed;
+    z-index: 10000;
+    left: 50%;
+    top: 1rem;
+    right: auto;
+    width: min(28rem, calc(100% - 1.5rem));
+    transform: translateX(-50%);
+    padding: 1rem 1.15rem;
+    font-size: 1.05rem;
+    line-height: 1.35;
+    color: #fff;
+    background: var(--map-accent);
+    border: 0;
+    border-radius: 0;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: opacity 280ms ease, transform 280ms ease;
+    animation: map-flash-in 280ms ease-out;
+}
+
+.map-flash.is-leaving {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-0.5rem);
+}
+
+.map-flash__title {
+    display: block;
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.map-flash__body {
+    margin: 0;
+    opacity: 0.95;
+}
+
+.map-flash--success {
+    background: var(--map-accent);
+    color: #fff;
+}
+
+.map-flash--error {
+    background: #a40000;
+    color: #fff;
+}
+
+@keyframes map-flash-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-0.6rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.map-sheet {
+    position: absolute;
+    z-index: 4;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--sheet-height);
+    background: var(--map-paper);
+    border-top: 1px solid #cfc8bc;
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 12%);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Author `display:flex` otherwise overrides the HTML hidden attribute. */
+.map-sheet[hidden] {
+    display: none !important;
+}
+
+/* Desktop: panel from the right */
+@media (min-width: 768px) {
+    .map-shell--sheet-open .map-canvas {
+        bottom: 0;
+        right: var(--sheet-width);
+    }
+
+    .map-shell--sheet-open .map-chrome {
+        right: calc(var(--sheet-width) + 0.75rem);
+    }
+
+    .map-sheet {
+        left: auto;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: var(--sheet-width);
+        height: auto;
+        border-top: 0;
+        border-left: 1px solid #cfc8bc;
+        box-shadow: -8px 0 24px rgb(0 0 0 / 12%);
+    }
+}
+
+.map-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem 0.35rem;
+    border-bottom: 1px solid #e5dfd4;
+}
+
+.map-sheet__title {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.map-sheet__close {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--map-ink);
+}
+
+.map-sheet__body {
+    overflow: auto;
+    padding: 0.85rem 1rem 1.25rem;
+    flex: 1;
+}
+
+.map-sheet__form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.map-sheet__form > div {
+    margin-bottom: 0.85rem;
+}
+
+.map-sheet__form input,
+.map-sheet__form select,
+.map-sheet__form textarea {
+    width: 100%;
+    font: inherit;
+    padding: 0.5rem 0.6rem;
+}
+
+.map-sheet__form input[type="checkbox"] {
+    width: auto;
+}
+
+.map-sheet__form #new_location_submission_categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+}
+
+.map-sheet__form #new_location_submission_categories label {
+    font-weight: 400;
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    margin: 0;
+}
+
+.map-sheet__form ul {
+    color: #a40000;
+    padding-left: 1.2rem;
+}
+
+.coord-field,
+.hp-field {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.picker-status {
+    font-size: 0.9rem;
+    margin: 0 0 0.85rem;
+    color: #444;
+}
+
+.picker-status.is-error {
+    color: #a40000;
+    font-weight: 600;
+}
+
+.map-marker {
+    width: 18px;
+    height: 18px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+    cursor: pointer;
+    padding: 0;
+}
+
+.map-marker--active {
+    background: var(--map-accent);
+}
+
+.map-marker--pending {
+    background: #9a9a9a;
+    opacity: 0.75;
+    border-color: #e8e8e8;
+}
+
+.map-marker--disputed {
+    background: var(--map-disputed);
+    opacity: 0.85;
+}
+
+.map-marker--picker {
+    width: 20px;
+    height: 20px;
+}
+
+.map-popup__status,
+.map-detail__cats {
+    color: var(--map-disputed);
+    font-weight: 600;
+}
+
+.map-detail__image {
+    display: block;
+    width: 100%;
+    max-height: 12rem;
+    object-fit: cover;
+    margin: 0 0 0.75rem;
+    background: #ddd;
+}
+
+.map-sheet__body p {
+    margin: 0.35rem 0 0;
+}

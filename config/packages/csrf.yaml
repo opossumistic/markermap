@@ -1,0 +1,10 @@
+# Classic session CSRF (works without JavaScript).
+# Stateless/SameOrigin CSRF from the Flex recipe requires JS and breaks progressive enhancement.
+framework:
+    form:
+        csrf_protection:
+            enabled: true
+            field_attr: []
+
+    csrf_protection:
+        enabled: true

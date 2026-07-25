@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tauschmap — Tauschboxen Hamburg{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('vendor/maplibre-gl/maplibre-gl.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div
+        class="map-shell"
+        data-controller="map-shell"
+        data-map-shell-style-url-value="{{ mapStyleUrl }}"
+        data-map-shell-locations-url-value="{{ path('api_locations_geojson') }}"
+        data-map-shell-reverse-url-value="{{ path('api_reverse_geocode') }}"
+        data-map-shell-geocode-url-value="{{ path('api_geocode') }}"
+        data-map-shell-report-url-template-value="/melden/__ID__"
+        data-map-shell-report-token-value="{{ csrf_token('report_gone') }}"
+        data-map-shell-open-add-value="{{ openAdd ? 'true' : 'false' }}"
+    >
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div
+                    class="map-flash map-flash--{{ label }}"
+                    role="status"
+                    aria-live="assertive"
+                    data-controller="flash"
+                    data-flash-delay-value="5500"
+                    title="Klicken zum Schließen"
+                >
+                    <strong class="map-flash__title">{% if label == 'success' %}Gesendet{% elseif label == 'error' %}Fehler{% else %}Hinweis{% endif %}</strong>
+                    <p class="map-flash__body">{{ message }}</p>
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        <div class="map-chrome">
+            <div class="map-brand">Tauschmap</div>
+            <form class="map-search" data-action="submit->map-shell#searchAddress" role="search">
+                <input
+                    type="search"
+                    class="map-search__input"
+                    placeholder="Adresse in Hamburg suchen…"
+                    autocomplete="off"
+                    enterkeyhint="search"
+                    data-map-shell-target="searchQuery"
+                    aria-label="Adresse suchen"
+                >
+                <button type="submit" class="map-btn">Suchen</button>
+                <ul class="map-search__results" data-map-shell-target="searchResults" hidden></ul>
+            </form>
+            <div class="map-actions">
+                <button type="button" class="map-btn" data-action="map-shell#startAdd" title="Oder auf die Karte tippen">Box eintragen</button>
+                <a class="secondary" href="{{ path('admin_inbox') }}">Admin</a>
+            </div>
+            <nav class="map-legal" aria-label="Rechtliches">
+                <a href="{{ path('legal_impressum') }}">Impressum</a>
+                <a href="{{ path('legal_datenschutz') }}">Datenschutz</a>
+            </nav>
+        </div>
+
+        <div
+            class="map-canvas"
+            data-map-shell-target="canvas"
+            role="region"
+            aria-label="Karte der Tauschboxen in Hamburg"
+        ></div>
+
+        <aside class="map-sheet" data-map-shell-target="sheet" hidden>
+            <div class="map-sheet__header">
+                <h2 class="map-sheet__title" data-map-shell-target="sheetTitle">Details</h2>
+                <button type="button" class="map-sheet__close" data-action="map-shell#closeSheet" aria-label="Schließen">×</button>
+            </div>
+
+            <div class="map-sheet__body" data-map-shell-target="detailPanel" hidden></div>
+
+            <div class="map-sheet__body map-sheet__add" data-map-shell-target="addPanel" hidden>
+                <p class="picker-status" data-map-shell-target="pickerStatus" role="status">Klicke auf die Karte oder suche eine Adresse.</p>
+
+                {{ form_start(form, { action: path('location_submit'), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
+                    {{ form_errors(form) }}
+                    {{ form_row(form.title) }}
+                    {{ form_row(form.street) }}
+                    {{ form_row(form.postalCode) }}
+                    {{ form_row(form.categories) }}
+                    {{ form_row(form.description) }}
+                    {{ form_row(form.image) }}
+
+                    {% if form.lat.vars.errors|length or form.lng.vars.errors|length %}
+                        <p class="picker-status is-error">Bitte einen Standort innerhalb Hamburgs auf der Karte setzen.</p>
+                    {% endif %}
+
+                    <div class="coord-field">{{ form_widget(form.lat) }}</div>
+                    <div class="coord-field">{{ form_widget(form.lng) }}</div>
+
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.website) }}
+                    <button type="submit" class="map-btn map-btn--block">Vorschlag absenden</button>
+                {{ form_end(form) }}
+            </div>
+
+            <div class="map-sheet__body map-sheet__add" data-map-shell-target="correctPanel" hidden>
+                <p class="picker-status">Aktuelle Infos sind vorausgefüllt. Änderungen erscheinen erst nach Moderations-Freigabe.</p>
+
+                {{ form_start(correctionForm, { action: path('location_correct'), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
+                    {{ form_errors(correctionForm) }}
+                    {{ form_row(correctionForm.locationId) }}
+                    {{ form_row(correctionForm.title) }}
+                    {{ form_row(correctionForm.description) }}
+                    {{ form_row(correctionForm.categories) }}
+                    {{ form_row(correctionForm.image) }}
+                    {{ form_row(correctionForm.email) }}
+                    {{ form_row(correctionForm.website) }}
+                    <button type="submit" class="map-btn map-btn--block">Ergänzung absenden</button>
+                {{ form_end(correctionForm) }}
+            </div>
+        </aside>
+    </div>
+{% endblock %}

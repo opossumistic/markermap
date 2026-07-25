@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Inbox{% endblock %}
+
+{% block body %}
+    <main style="max-width: 56rem; margin: 2rem auto; font-family: system-ui, sans-serif;">
+        <h1>Moderations-Inbox</h1>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p><strong>{{ label }}:</strong> {{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if submissions is empty %}
+            <p>Keine offenen Submissions.</p>
+        {% else %}
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th align="left">ID</th>
+                        <th align="left">Typ</th>
+                        <th align="left">Location</th>
+                        <th align="left">Payload</th>
+                        <th align="left">Eingang</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for submission in submissions %}
+                        <tr style="border-top: 1px solid #ccc; vertical-align: top;">
+                            <td>#{{ submission.id }}</td>
+                            <td>
+                                {{ submission.type.value }}
+                                {% if submission.payload.image_path is defined and submission.payload.image_path %}
+                                    <br><img src="/{{ submission.payload.image_path }}" alt="" style="max-width:8rem;max-height:6rem;object-fit:cover;margin-top:.35rem;">
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if submission.location %}
+                                    #{{ submission.location.id }} {{ submission.location.displayLabel }}
+                                    <br><small>{{ submission.location.status.value }}</small>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td><pre style="white-space: pre-wrap; margin: 0;">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
+                            <td>{{ submission.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                <form method="post" action="{{ path('admin_submission_approve', {id: submission.id}) }}" style="display:inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('approve' ~ submission.id) }}">
+                                    <button type="submit">Approve</button>
+                                </form>
+                                <form method="post" action="{{ path('admin_submission_reject', {id: submission.id}) }}" style="display:inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ submission.id) }}">
+                                    <button type="submit">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </main>
+{% endblock %}
