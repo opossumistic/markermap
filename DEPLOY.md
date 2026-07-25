@@ -17,7 +17,7 @@ Deploy lädt die App nach `markermap/`; darunter entstehen `public/`, `src/`, `v
 
 ## Erster Server-Setup (einmalig)
 
-1. Verzeichnis `/public_html/markermap` muss **bereits existieren**. Fehlt es, stimmt `SFTP_REMOTE_PATH` oder das Hosting-Setup nicht. Die Pipeline legt nur fehlende Top-Level-Child-Ordner an (`assets`, `bin`, …) — OpenSSH `put -r` braucht die bei leerem First-Deploy.
+1. Verzeichnis `/public_html/markermap` muss **bereits existieren**. Fehlt es, stimmt `SFTP_REMOTE_PATH` nicht (Hosting ist SFTP-only, kein SSH-Shell). Die Pipeline legt fehlende Child-Ordner per SFTP `-mkdir` an.
 2. Hoster-Docroot der Domain auf `/public_html/markermap/public` setzen.
 3. Verzeichnisse anlegen und beschreibbar machen:
    - `var/cache`, `var/log`, `var/data`, `var/data/backups`
