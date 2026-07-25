@@ -117,7 +117,7 @@ jobs:
           BATCH="$(mktemp)"
           {
             echo "cd ${REMOTE}"
-            for d in assets bin config data migrations public public/_ops src templates translations var var/tmp vendor; do
+            for d in assets bin config data migrations public public/_ops src templates translations var var/cache var/log var/data var/data/backups var/tmp vendor public/uploads public/uploads/locations; do
               echo "-mkdir ${d}"
             done
           } > "$BATCH"
@@ -181,6 +181,27 @@ jobs:
             -o /tmp/unpack.json
           cat /tmp/unpack.json
           php -r '$j=json_decode(file_get_contents("/tmp/unpack.json"), true); exit(!empty($j["ok"])?0:1);'
+
+      - name: Ensure runtime dirs on server
+        if: success()
+        env:
+          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
+            echo "OPS_BASE_URL / MIGRATE_TOKEN not set — skip ensure-runtime."
+            exit 0
+          fi
+          BASE="${OPS_BASE_URL%/}"
+          echo "POST ${BASE}/_ops/ensure-runtime.php"
+          curl -fsS -X POST "${BASE}/_ops/ensure-runtime.php" \
+            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
+            -H "Accept: application/json" \
+            --max-time 60 \
+            -o /tmp/ensure.json
+          cat /tmp/ensure.json
+          php -r '$j=json_decode(file_get_contents("/tmp/ensure.json"), true); exit(!empty($j["ok"])?0:1);'
 
       - name: Run migrations on server
         if: success()

@@ -19,9 +19,10 @@ Deploy lädt die App nach `markermap/`; darunter entstehen `public/`, `src/`, `v
 
 1. Verzeichnis `/public_html/markermap` muss **bereits existieren**. Fehlt es, stimmt `SFTP_REMOTE_PATH` nicht (Hosting ist SFTP-only, kein SSH-Shell). Die Pipeline legt fehlende Child-Ordner per SFTP `-mkdir` an.
 2. Hoster-Docroot der Domain auf `/public_html/markermap/public` setzen.
-3. Verzeichnisse anlegen und beschreibbar machen:
+3. Verzeichnisse anlegen und **für den PHP-User beschreibbar** machen:
    - `var/cache`, `var/log`, `var/data`, `var/data/backups`, `var/tmp`
    - `public/uploads/locations`
+   - Typisch: Rechte `775` auf diese Ordner (File-Manager / FTP). Fehlt `var/data` oder ist er nicht schreibbar → `SQLSTATE[HY000] [14] unable to open database file`.
 4. `.env.local` **nur auf dem Server** (nicht committen), Beispiel:
 
 ```dotenv
@@ -86,6 +87,28 @@ Voraussetzung: `vendor-deploy.zip` liegt bereits unter `var/tmp/` auf dem Server
 - `public/uploads/locations` (Fotos)
 - `.env*` (Server-`.env.local` bleibt)
 - Tests / `.ddev` / Konzept-Markdown
+
+## Troubleshooting: `unable to open database file`
+
+Ursache fast immer: Ordner `var/data/` fehlt oder PHP darf dort nicht schreiben (`var/data` ist Deploy-Exclude).
+
+Sofort-Fix (FTP / File-Manager):
+
+1. Anlegen: `var/data`, `var/data/backups` (unter der Symfony-Projektwurzel, nicht unter `public/`)
+2. Rechte: Ordner beschreibbar (`775` o. ä.)
+3. Runtime + Schema:
+
+```bash
+curl -X POST "https://deine-domain.tld/_ops/ensure-runtime.php" \
+  -H "X-Migrate-Token: $MIGRATE_TOKEN"
+
+curl -X POST "https://deine-domain.tld/_ops/migrate" \
+  -H "X-Migrate-Token: $MIGRATE_TOKEN"
+```
+
+4. Seite neu laden.
+
+`ensure-runtime.php` meldet im JSON, ob `var/data` writable ist.
 
 ## Migrationen ohne SSH
 
