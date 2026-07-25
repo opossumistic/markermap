@@ -557,23 +557,25 @@ export default class extends Controller {
     }
 
     buildDetailHtml(props) {
-        const image = props.image_url
-            ? `<img class="map-detail__image" src="${this.escape(props.image_url)}" alt="" loading="lazy">`
-            : '';
-        const categories = Array.isArray(props.category_labels) && props.category_labels.length
-            ? `<p class="map-detail__cats">${props.category_labels.map((c) => this.escape(c)).join(' · ')}</p>`
-            : '';
-        const meta = [props.street, props.district].filter(Boolean).map((v) => this.escape(v)).join(', ');
         const status = props.status === 'disputed'
             ? '<p class="map-popup__status">Status ungeprüft</p>'
             : props.status === 'pending'
-                ? '<p class="map-popup__status">Wird noch verifiziert</p>'
+                ? '<p class="map-popup__status">Wird noch verifiziert — Details nach Freigabe</p>'
                 : '';
-        const description = props.description
+        // Pending: API already strips UGC; still skip image/description/categories defensively.
+        const isPending = props.status === 'pending';
+        const image = !isPending && props.image_url
+            ? `<img class="map-detail__image" src="${this.escape(props.image_url)}" alt="" loading="lazy">`
+            : '';
+        const categories = !isPending && Array.isArray(props.category_labels) && props.category_labels.length
+            ? `<p class="map-detail__cats">${props.category_labels.map((c) => this.escape(c)).join(' · ')}</p>`
+            : '';
+        const meta = [props.street, props.district].filter(Boolean).map((v) => this.escape(v)).join(', ');
+        const description = !isPending && props.description
             ? `<p>${this.escape(props.description)}</p>`
             : '';
         const id = Number(props.id);
-        const actions = Number.isFinite(id) && id > 0 && props.status !== 'pending'
+        const actions = Number.isFinite(id) && id > 0 && !isPending
             ? `<div class="map-detail__actions">
                 <button type="button" class="map-btn map-btn--block" data-action="map-shell#startCorrect" data-location-id="${id}">Bearbeiten</button>
                 <button type="button" class="map-btn map-btn--block map-btn--muted" data-action="map-shell#reportGone" data-location-id="${id}">Nicht mehr vorhanden melden</button>

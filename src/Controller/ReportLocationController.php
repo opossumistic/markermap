@@ -3,10 +3,12 @@
 namespace App\Controller;
 
 use App\Repository\LocationRepository;
+use App\Service\ClientRateLimit;
 use App\Service\LocationWorkflow;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ReportLocationController extends AbstractController
@@ -17,9 +19,17 @@ final class ReportLocationController extends AbstractController
         Request $request,
         LocationRepository $locations,
         LocationWorkflow $workflow,
+        RateLimiterFactoryInterface $publicWriteLimiter,
+        ClientRateLimit $rateLimit,
     ): Response {
         if (!$this->isCsrfTokenValid('report_gone', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if (!$rateLimit->tryConsume($publicWriteLimiter, $request)) {
+            $this->addFlash('error', 'Zu viele Anfragen — bitte in ein paar Minuten erneut versuchen.');
+
+            return $this->redirectToRoute('home');
         }
 
         $location = $locations->find($id);

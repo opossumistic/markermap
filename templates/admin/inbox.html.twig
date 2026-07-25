@@ -4,6 +4,7 @@
 
 {% block body %}
     <main style="max-width: 56rem; margin: 2rem auto; font-family: system-ui, sans-serif;">
+        <p><a href="{{ path('admin_locations') }}">Locations</a> · <a href="{{ path('home') }}">Karte</a></p>
         <h1>Moderations-Inbox</h1>
 
         {% for label, messages in app.flashes %}
@@ -33,13 +34,23 @@
                             <td>
                                 {{ submission.type.value }}
                                 {% if submission.payload.image_path is defined and submission.payload.image_path %}
-                                    <br><img src="/{{ submission.payload.image_path }}" alt="" style="max-width:8rem;max-height:6rem;object-fit:cover;margin-top:.35rem;">
+                                    <br>
+                                    <a href="/{{ submission.payload.image_path }}" target="_blank" rel="noopener noreferrer" title="Bild in neuem Tab öffnen">
+                                        <img src="/{{ submission.payload.image_path }}" alt="" style="max-width:8rem;max-height:6rem;object-fit:cover;margin-top:.35rem;cursor:pointer;">
+                                    </a>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if submission.location %}
                                     #{{ submission.location.id }} {{ submission.location.displayLabel }}
                                     <br><small>{{ submission.location.status.value }}</small>
+                                    {% if submission.location.status.value != 'removed' %}
+                                        <form method="post" action="{{ path('admin_location_remove', {id: submission.location.id}) }}" style="margin-top:.35rem;" onsubmit="return confirm('Location #{{ submission.location.id }} von der Karte entfernen?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ submission.location.id) }}">
+                                            <input type="hidden" name="redirect" value="admin_inbox">
+                                            <button type="submit">Location entfernen</button>
+                                        </form>
+                                    {% endif %}
                                 {% else %}
                                     —
                                 {% endif %}

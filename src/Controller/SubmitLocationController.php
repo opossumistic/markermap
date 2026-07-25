@@ -6,12 +6,14 @@ use App\Form\Data\LocationCorrectionData;
 use App\Form\Data\NewLocationSubmissionData;
 use App\Form\LocationCorrectionType;
 use App\Form\NewLocationSubmissionType;
+use App\Service\ClientRateLimit;
 use App\Service\LocationImageStorage;
 use App\Service\LocationWorkflow;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class SubmitLocationController extends AbstractController
@@ -27,6 +29,8 @@ final class SubmitLocationController extends AbstractController
         Request $request,
         LocationWorkflow $workflow,
         LocationImageStorage $images,
+        RateLimiterFactoryInterface $publicWriteLimiter,
+        ClientRateLimit $rateLimit,
     ): Response {
         if ($request->isMethod('GET')) {
             return $this->redirectToRoute('home', ['add' => 1]);
@@ -37,6 +41,12 @@ final class SubmitLocationController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            if (!$rateLimit->tryConsume($publicWriteLimiter, $request)) {
+                $this->addFlash('error', 'Zu viele Anfragen — bitte in ein paar Minuten erneut versuchen.');
+
+                return $this->redirectToRoute('home');
+            }
+
             if ($data->website !== null && trim($data->website) !== '') {
                 $this->addFlash('success', 'Danke! Dein Vorschlag ist als ausgegrauter Punkt auf der Karte und wird geprüft.');
 

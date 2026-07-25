@@ -38,19 +38,27 @@ jobs:
           # Exact cache key includes composer.lock hash — hit means this lock was deployed successfully before.
           if [ "$CACHE_HIT" = "true" ]; then
             echo "deploy_vendor=false" >> "$GITHUB_OUTPUT"
-            echo "composer.lock unchanged — skipping vendor upload (~5000 files)."
+            echo "composer.lock unchanged — skipping vendor package."
           else
             echo "deploy_vendor=true" >> "$GITHUB_OUTPUT"
-            echo "composer.lock changed or no deploy cache — vendor will be uploaded."
+            echo "composer.lock changed or no deploy cache — vendor.zip will be uploaded + unpacked."
           fi
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: ctype, iconv, mbstring, sqlite3, pdo_sqlite, intl
+          extensions: ctype, iconv, mbstring, sqlite3, pdo_sqlite, intl, zip
           tools: composer:v2
           coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
 
       - name: Install dependencies
         env:
@@ -70,20 +78,30 @@ jobs:
 
       - name: Ensure runtime directories exist in artifact
         run: |
-          mkdir -p var/cache var/log var/data/backups public/uploads/locations
-          touch var/data/.gitkeep public/uploads/locations/.gitkeep
+          mkdir -p var/cache var/log var/data/backups var/tmp public/uploads/locations
+          touch var/data/.gitkeep public/uploads/locations/.gitkeep var/tmp/.gitkeep
 
+      - name: Pack vendor as zip (single SFTP file)
+        if: steps.vendor-check.outputs.deploy_vendor == 'true'
+        run: |
+          set -euo pipefail
+          rm -f var/tmp/vendor-deploy.zip
+          # Zip root = vendor contents (autoload.php at archive root).
+          (cd vendor && zip -r -q -9 ../var/tmp/vendor-deploy.zip .)
+          ls -lh var/tmp/vendor-deploy.zip
+          # Sanity
+          unzip -l var/tmp/vendor-deploy.zip | head -5
+          unzip -l var/tmp/vendor-deploy.zip | grep -q 'autoload.php'
+
+      # Always exclude composer vendor/ from tree sync — uploaded as zip when needed.
+      # public/vendor/ (MapLibre) stays in the normal sync.
       - name: Prepare SFTP excludes
         id: rsync
         run: |
-          EXCLUDES="--exclude=.git* --exclude=.github --exclude=.ddev --exclude=var/cache --exclude=var/log --exclude=var/data --exclude=public/uploads/locations --exclude=.env* --exclude=tests --exclude=tauschbox-hamburg-shared-hosting-konzept.md"
-          if [ "${{ steps.vendor-check.outputs.deploy_vendor }}" != "true" ]; then
-            EXCLUDES="${EXCLUDES} --exclude=vendor"
-          fi
+          EXCLUDES="--exclude=.git* --exclude=.github --exclude=.ddev --exclude=var/cache --exclude=var/log --exclude=var/data --exclude=var/tmp --exclude=vendor --exclude=public/uploads/locations --exclude=.env* --exclude=tests --exclude=tauschbox-hamburg-shared-hosting-konzept.md"
           echo "args=${EXCLUDES}" >> "$GITHUB_OUTPUT"
 
-      # Host allows SFTP only (no SSH exec) — same as jobboard sftp_only.
-      # OpenSSH put -r still needs child dirs on an empty tree.
+      # Host allows SFTP only (no SSH exec).
       - name: Ensure remote directories exist
         env:
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}
@@ -98,10 +116,8 @@ jobs:
           REMOTE="${SFTP_REMOTE_PATH%/}"
           BATCH="$(mktemp)"
           {
-            # Fail if project root missing (config/hosting error).
             echo "cd ${REMOTE}"
-            # '-' = continue on error (dir already exists).
-            for d in assets bin config data migrations public src templates translations var vendor; do
+            for d in assets bin config data migrations public public/_ops src templates translations var var/tmp vendor; do
               echo "-mkdir ${d}"
             done
           } > "$BATCH"
@@ -110,7 +126,7 @@ jobs:
             "${SFTP_USERNAME}@${SFTP_HOST}"
           rm -f "$BATCH"
 
-      - name: Deploy via SFTP
+      - name: Deploy app via SFTP (without vendor/)
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
           server: ${{ secrets.SFTP_HOST }}
@@ -122,6 +138,73 @@ jobs:
           remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
           sftp_only: true
           rsyncArgs: ${{ steps.rsync.outputs.args }}
+
+      - name: Upload vendor.zip via SFTP
+        if: steps.vendor-check.outputs.deploy_vendor == 'true'
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+        run: |
+          set -euo pipefail
+          REMOTE="${SFTP_REMOTE_PATH%/}"
+          BATCH="$(mktemp)"
+          {
+            echo "cd ${REMOTE}/var/tmp"
+            echo "put var/tmp/vendor-deploy.zip vendor-deploy.zip"
+          } > "$BATCH"
+          sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
+            -o StrictHostKeyChecking=no \
+            "${SFTP_USERNAME}@${SFTP_HOST}"
+          rm -f "$BATCH"
+          echo "vendor-deploy.zip uploaded."
+
+      - name: Unpack vendor on server
+        if: steps.vendor-check.outputs.deploy_vendor == 'true'
+        env:
+          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
+            echo "::error::OPS_BASE_URL and MIGRATE_TOKEN secrets are required to unpack vendor.zip"
+            exit 1
+          fi
+          BASE="${OPS_BASE_URL%/}"
+          echo "POST ${BASE}/_ops/unpack-vendor.php"
+          curl -fsS -X POST "${BASE}/_ops/unpack-vendor.php" \
+            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
+            -H "Accept: application/json" \
+            --max-time 600 \
+            -o /tmp/unpack.json
+          cat /tmp/unpack.json
+          php -r '$j=json_decode(file_get_contents("/tmp/unpack.json"), true); exit(!empty($j["ok"])?0:1);'
+
+      - name: Run migrations on server
+        if: success()
+        env:
+          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
+            echo "OPS_BASE_URL / MIGRATE_TOKEN not set — skip remote migrate (run manually)."
+            exit 0
+          fi
+          BASE="${OPS_BASE_URL%/}"
+          echo "POST ${BASE}/_ops/migrate"
+          curl -fsS -X POST "${BASE}/_ops/migrate" \
+            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
+            -H "Accept: application/json" \
+            --max-time 120 \
+            -o /tmp/migrate.json || {
+              echo "::warning::migrate call failed (site may still be fine if no new migrations)"
+              cat /tmp/migrate.json 2>/dev/null || true
+              exit 0
+            }
+          cat /tmp/migrate.json
 
       - name: Remember deployed composer.lock hash
         if: success()

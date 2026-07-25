@@ -5,27 +5,132 @@
 {% block body %}
 <main class="legal">
     <p><a href="{{ path('home') }}">← Zur Karte</a></p>
-    <h1>Datenschutz</h1>
-    <p><em>Platzhalter — vor Go-Live rechtlich prüfen und vervollständigen.</em></p>
-    <h2>Verantwortliche Stelle</h2>
-    <p>Siehe <a href="{{ path('legal_impressum') }}">Impressum</a>.</p>
-    <h2>Welche Daten wir verarbeiten</h2>
+    <h1>Datenschutzerklärung</h1>
+    <p class="legal__note">Entwurf für Soft-Launch — vor öffentlichem Betrieb rechtlich prüfen und an finale Domain, Hosting und Kontakt anpassen.</p>
+
+    <h2>1. Verantwortliche Stelle</h2>
+    <p>
+        Verantwortlich für die Datenverarbeitung auf dieser Website:<br>
+        Andreas Freund, Musterstraße 12, 22085 Hamburg,<br>
+        E-Mail: <a href="mailto:kontakt@tauschmap.example">kontakt@tauschmap.example</a><br>
+        Weitere Angaben: <a href="{{ path('legal_impressum') }}">Impressum</a>.
+    </p>
+
+    <h2>2. Überblick: Was macht Tauschmap?</h2>
+    <p>
+        Tauschmap zeigt öffentlich Tauschboxen in Hamburg auf einer Karte.
+        Nutzerinnen und Nutzer können Standorte vorschlagen, ergänzen oder als „nicht mehr vorhanden“ melden.
+        Vorschläge werden moderiert, bevor Beschreibung, Kategorien und Fotos öffentlich sichtbar werden.
+        Bis zur Freigabe erscheint höchstens ein ausgegrauter Pin mit Adresse aus der Geocodierung.
+    </p>
+
+    <h2>3. Welche Daten wir verarbeiten</h2>
+    <h3>3.1 Nutzungsdaten beim Aufruf</h3>
+    <p>
+        Beim Aufruf der Website verarbeitet der Webserver übliche Verbindungsdaten (z. B. IP-Adresse, Zeitpunkt, angeforderte URL, User-Agent, ggf. Referrer).
+        Das ist technisch erforderlich, um die Seite auszuliefern und Angriffe/Fehlfunktionen nachvollziehen zu können.
+        Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am sicheren Betrieb).
+        Speicherdauer: in der Regel kurze Server-Logs gemäß Hosting-Konfiguration, danach Löschung oder Anonymisierung.
+    </p>
+
+    <h3>3.2 Session-Cookie (technisch notwendig)</h3>
+    <p>
+        Wir setzen ein Session-Cookie (typischerweise <code>PHPSESSID</code>), um Flash-Hinweise nach Formularabsendungen anzuzeigen und CSRF-Schutz zu ermöglichen.
+        Ohne dieses Cookie funktionieren Absenden und Schutz vor Cross-Site-Requests nicht zuverlässig.
+        Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO bzw. § 25 Abs. 2 TTDSG (technisch erforderlich).
+        Das Cookie ist sitzungsbezogen und wird beim Schließen des Browsers bzw. nach Ablauf der Session ungültig.
+        Es findet kein Tracking und kein Profiling über dieses Cookie statt.
+    </p>
+
+    <h3>3.3 Standortvorschläge und Meldungen</h3>
+    <p>Wenn Sie einen Eintrag vorschlagen, ergänzen oder melden, verarbeiten wir insbesondere:</p>
     <ul>
-        <li>Vorschläge zu Tauschboxen (Adresse, Koordinaten, optionales Foto, optionale E-Mail für Rückfragen)</li>
-        <li>Technische Server-Logs (IP, Zeitpunkt, User-Agent) in üblichem Umfang</li>
-        <li>Session-Cookie für Flash-Meldungen und CSRF-Schutz</li>
+        <li>Koordinaten (Latitude/Longitude) innerhalb Hamburgs</li>
+        <li>Adresse bzw. aus Geocodierung abgeleitete Adressbestandteile (Straße, PLZ, Stadtteil)</li>
+        <li>optional: Bezeichnung, Beschreibung, Kategorien</li>
+        <li>optional: Foto (JPEG/PNG/WebP, begrenzt in Dateigröße)</li>
+        <li>optional: E-Mail-Adresse für Rückfragen der Moderation</li>
+        <li>technische Metaangaben der Einreichung (Zeitpunkt, Moderationsstatus)</li>
     </ul>
-    <h2>Zweck / Rechtsgrundlage</h2>
-    <p>Betrieb der Community-Karte und Moderationsprozess. Rechtsgrundlage typischerweise berechtigtes Interesse bzw. Einwilligung bei optionaler E-Mail/Foto — bitte rechtlich finalisieren.</p>
-    <h2>Speicherdauer</h2>
-    <p>Live-Einträge solange öffentlich; abgelehnte / entfernte Einträge soft-deleted. Uploads unter `public/uploads/`.</p>
-    <h2>Drittanbieter</h2>
+    <p>
+        Zweck: Betrieb der Community-Karte, Qualitätsprüfung und Missbrauchsabwehr.
+        Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer gepflegten öffentlichen Karte).
+        Soweit Sie freiwillig eine E-Mail angeben: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung); Widerruf jederzeit formlos per E-Mail möglich.
+        Fotos und Freitexte können personenbezogene oder identifizierende Inhalte enthalten — bitte keine Fotos von Personen und keine privaten Daten Dritter einreichen.
+    </p>
+
+    <h3>3.4 Admin-Zugang</h3>
+    <p>
+        Der Moderationsbereich ist durch HTTP-Basic-Auth geschützt.
+        Zugangsdaten liegen nur beim Betreiber; Anmeldeversuche können serverseitig protokolliert werden.
+    </p>
+
+    <h2>4. Speicherdauer</h2>
     <ul>
-        <li>Kartenkacheln / Style: OpenFreeMap (Browser lädt Tiles für die Kartendarstellung)</li>
-        <li>Geocoding: Nominatim/OpenStreetMap (serverseitig, mit eigenem User-Agent)</li>
-        <li>Kartenbibliothek MapLibre: self-hosted unter dieser Domain (kein CDN)</li>
+        <li>Freigegebene Einträge: solange sie öffentlich relevant sind bzw. bis zur Entfernung.</li>
+        <li>Abgelehnte oder entfernte Einträge: soft-deleted (nicht mehr auf der Karte); interne Aufbewahrung für Nachvollziehbarkeit/Missbrauchsabwehr, danach Löschung, soweit keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</li>
+        <li>Hochgeladene Fotos: unter <code>uploads/locations/</code> auf dem Server, gekoppelt an den jeweiligen Eintrag/Vorschlag.</li>
+        <li>Optionale E-Mails: mit dem jeweiligen Vorschlag; Löschung auf Anfrage bzw. wenn nicht mehr erforderlich.</li>
     </ul>
-    <h2>Rechte</h2>
-    <p>Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch — Kontakt siehe Impressum.</p>
+
+    <h2>5. Empfänger / Drittanbieter</h2>
+    <p>Wir verkaufen keine Daten. Für den Betrieb sind folgende Verarbeitungen relevant:</p>
+    <ul>
+        <li>
+            <strong>Hosting-Provider:</strong> Speicherung der Website, Datenbank und Uploads auf dem gemieteten Webspace.
+            Es besteht ein Auftragsverarbeitungsverhältnis bzw. die üblichen Hosting-AGB — bitte vor Go-Live konkret benennen.
+        </li>
+        <li>
+            <strong>OpenFreeMap (Kartenkacheln/-stile):</strong>
+            Der Browser lädt Kartenbilder direkt von OpenFreeMap (derzeit <code>tiles.openfreemap.org</code>).
+            Dabei werden technisch notwendige Verbindungsdaten (inkl. IP) an diesen Anbieter übertragen.
+            Zweck: Darstellung der Basemap. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
+            Details: Dokumentation/Privacy des Anbieters OpenFreeMap.
+        </li>
+        <li>
+            <strong>Nominatim / OpenStreetMap (Geocoding):</strong>
+            Adresssuche und Reverse-Geocoding erfolgen serverseitig über unseren Proxy an Nominatim.
+            Übermittelt werden Suchbegriff bzw. Koordinaten sowie ein identifizierbarer User-Agent.
+            Zweck: Plausibilisierung von Standorten in Hamburg. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
+            Nutzung unterliegt den Nutzungsbedingungen von Nominatim/OSM.
+        </li>
+        <li>
+            <strong>MapLibre GL JS:</strong> wird von diesem Server ausgeliefert (kein CDN), damit keine zusätzliche Drittanbieter-Verbindung für die Bibliothek entsteht.
+        </li>
+    </ul>
+    <p>Eine Übermittlung in unsichere Drittländer ist nicht beabsichtigt; je nach Routing von CDN-/Tile-Infrastruktur kann eine Verarbeitung außerhalb der EU nicht ausgeschlossen werden — bitte vor Go-Live mit dem konkreten Anbieterstatus abgleichen.</p>
+
+    <h2>6. Kein Cookie-Banner / kein Tracking</h2>
+    <p>
+        Wir setzen keine Analyse-, Marketing- oder Social-Plugins ein.
+        Es gibt keinen Cookie-Consent-Banner, weil wir neben technisch notwendigen Session-Cookies keine einwilligungsbedürftigen Cookies setzen.
+        Unabhängig davon lädt Ihr Browser für die Karte Ressourcen von OpenFreeMap (siehe oben).
+    </p>
+
+    <h2>7. Ihre Rechte</h2>
+    <p>Sie haben nach der DSGVO — soweit die Voraussetzungen vorliegen — insbesondere Rechte auf:</p>
+    <ul>
+        <li>Auskunft (Art. 15)</li>
+        <li>Berichtigung (Art. 16)</li>
+        <li>Löschung (Art. 17)</li>
+        <li>Einschränkung der Verarbeitung (Art. 18)</li>
+        <li>Datenübertragbarkeit (Art. 20)</li>
+        <li>Widerspruch gegen Verarbeitungen auf Basis berechtigter Interessen (Art. 21)</li>
+        <li>Widerruf erteilter Einwilligungen (Art. 7 Abs. 3) mit Wirkung für die Zukunft</li>
+    </ul>
+    <p>
+        Zur Ausübung genügt eine E-Mail an die im Impressum genannte Adresse.
+        Außerdem besteht ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde, z. B. dem Hamburgischen Beauftragten für Datenschutz und Informationsfreiheit.
+    </p>
+
+    <h2>8. Pflicht zur Bereitstellung</h2>
+    <p>
+        Ohne die technischen Nutzungsdaten ist ein Aufruf der Website nicht möglich.
+        Ohne Koordinaten kann kein Standortvorschlag gespeichert werden.
+        E-Mail und Foto sind freiwillig.
+    </p>
+
+    <h2>9. Änderungen</h2>
+    <p>Wir passen diese Erklärung an, wenn sich Funktionen, Rechtslage oder eingesetzte Dienste ändern. Es gilt die jeweils auf dieser Seite veröffentlichte Fassung.</p>
 </main>
 {% endblock %}

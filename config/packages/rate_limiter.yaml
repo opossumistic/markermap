@@ -1,0 +1,15 @@
+framework:
+    rate_limiter:
+        # Nominatim proxy — keep well under public Nominatim etiquette (~1 rps).
+        geocode:
+            policy: sliding_window
+            limit: 30
+            interval: '1 minute'
+            lock_factory: null
+
+        # Submissions, corrections, "gone" reports — anti-spam, not UX-hostile.
+        public_write:
+            policy: sliding_window
+            limit: 10
+            interval: '15 minutes'
+            lock_factory: null

@@ -25,9 +25,13 @@ final class LocationWorkflow
     {
         $payload = $this->enrichPayloadFromGeocode($payload);
 
-        // Visible on map immediately as pending (gray); moderation flips to active/removed.
+        // Visible on map immediately as pending (gray); public GeoJSON hides UGC until approve.
+        // Image stays on the submission payload only — not on the Location until approve.
+        $locationPayload = $payload;
+        unset($locationPayload['image_path']);
+
         $location = new Location();
-        $location->applyPayload($payload);
+        $location->applyPayload($locationPayload);
 
         $submission = new Submission(SubmissionType::New, $payload, $location, $email);
         $this->entityManager->persist($location);
@@ -81,6 +85,24 @@ final class LocationWorkflow
         $this->entityManager->flush();
 
         return $submission;
+    }
+
+    /**
+     * Admin removes a live/pending pin from the map and closes related open submissions.
+     */
+    public function adminSoftRemove(Location $location): void
+    {
+        if ($location->getStatus() === LocationStatus::Removed) {
+            throw new \DomainException('Location is already removed.');
+        }
+
+        $location->softRemove();
+
+        foreach ($this->submissionRepository->findOpenForLocation($location) as $submission) {
+            $submission->reject();
+        }
+
+        $this->entityManager->flush();
     }
 
     public function approve(Submission $submission): void
@@ -187,13 +209,19 @@ final class LocationWorkflow
             return $payload;
         }
 
-        if (empty($payload['district']) && $geo['district'] !== null) {
+        // Map-facing address comes from Nominatim when available (not free-text UGC).
+        // Keep the submitter's typed street for admin if it differs.
+        if ($geo['district'] !== null) {
             $payload['district'] = $geo['district'];
         }
-        if (empty($payload['street']) && $geo['street'] !== null) {
+        if ($geo['street'] !== null) {
+            $submittedStreet = isset($payload['street']) ? trim((string) $payload['street']) : '';
+            if ($submittedStreet !== '' && $submittedStreet !== $geo['street']) {
+                $payload['street_submitted'] = $submittedStreet;
+            }
             $payload['street'] = $geo['street'];
         }
-        if (empty($payload['postal_code']) && $geo['postalCode'] !== null) {
+        if ($geo['postalCode'] !== null) {
             $payload['postal_code'] = $geo['postalCode'];
         }
 

@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Locations{% endblock %}
+
+{% block body %}
+    <main style="max-width: 56rem; margin: 2rem auto; font-family: system-ui, sans-serif;">
+        <p><a href="{{ path('admin_inbox') }}">← Inbox</a> · <a href="{{ path('home') }}">Karte</a></p>
+        <h1>Locations auf der Karte</h1>
+        <p>Soft-Remove blendet den Pin aus (Status <code>removed</code>). Offene Submissions dazu werden geschlossen.</p>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p><strong>{{ label }}:</strong> {{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if locations is empty %}
+            <p>Keine sichtbaren Locations.</p>
+        {% else %}
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th align="left">ID</th>
+                        <th align="left">Status</th>
+                        <th align="left">Label</th>
+                        <th align="left">Adresse</th>
+                        <th align="left">Coords</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for location in locations %}
+                        <tr style="border-top: 1px solid #ccc; vertical-align: top;">
+                            <td>#{{ location.id }}</td>
+                            <td>{{ location.status.value }}</td>
+                            <td>{{ location.displayLabel }}</td>
+                            <td>
+                                {{ location.street ?? '—' }}
+                                {% if location.district %}<br><small>{{ location.district }}</small>{% endif %}
+                            </td>
+                            <td><small>{{ location.lat|number_format(5) }}, {{ location.lng|number_format(5) }}</small></td>
+                            <td>
+                                <form method="post" action="{{ path('admin_location_remove', {id: location.id}) }}" style="display:inline;" onsubmit="return confirm('Location #{{ location.id }} wirklich von der Karte entfernen?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ location.id) }}">
+                                    <input type="hidden" name="redirect" value="admin_locations">
+                                    <button type="submit">Entfernen</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </main>
+{% endblock %}

@@ -43,4 +43,17 @@ class SubmissionRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /** @return list<Submission> */
+    public function findOpenForLocation(Location $location): array
+    {
+        return $this->createQueryBuilder('s')
+            ->andWhere('s.location = :location')
+            ->andWhere('s.reviewStatus = :status')
+            ->setParameter('location', $location)
+            ->setParameter('status', ReviewStatus::Open)
+            ->orderBy('s.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

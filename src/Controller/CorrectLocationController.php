@@ -5,11 +5,13 @@ namespace App\Controller;
 use App\Form\Data\LocationCorrectionData;
 use App\Form\LocationCorrectionType;
 use App\Repository\LocationRepository;
+use App\Service\ClientRateLimit;
 use App\Service\LocationImageStorage;
 use App\Service\LocationWorkflow;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class CorrectLocationController extends AbstractController
@@ -20,6 +22,8 @@ final class CorrectLocationController extends AbstractController
         LocationRepository $locations,
         LocationWorkflow $workflow,
         LocationImageStorage $images,
+        RateLimiterFactoryInterface $publicWriteLimiter,
+        ClientRateLimit $rateLimit,
     ): Response {
         $data = new LocationCorrectionData();
         $form = $this->createForm(LocationCorrectionType::class, $data);
@@ -27,6 +31,12 @@ final class CorrectLocationController extends AbstractController
 
         if (!$form->isSubmitted() || !$form->isValid()) {
             $this->addFlash('error', 'Ergänzung ungültig — bitte Eingaben prüfen.');
+
+            return $this->redirectToRoute('home');
+        }
+
+        if (!$rateLimit->tryConsume($publicWriteLimiter, $request)) {
+            $this->addFlash('error', 'Zu viele Anfragen — bitte in ein paar Minuten erneut versuchen.');
 
             return $this->redirectToRoute('home');
         }

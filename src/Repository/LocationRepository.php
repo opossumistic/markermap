@@ -27,4 +27,19 @@ class LocationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Map-visible locations for admin moderation (newest first).
+     *
+     * @return list<Location>
+     */
+    public function findModeratable(): array
+    {
+        return $this->createQueryBuilder('l')
+            ->andWhere('l.status IN (:statuses)')
+            ->setParameter('statuses', [LocationStatus::Pending, LocationStatus::Active, LocationStatus::Disputed])
+            ->orderBy('l.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }
