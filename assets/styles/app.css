@@ -7,10 +7,22 @@
     --sheet-width: min(28rem, 100%);
     /* MapLibre NavigationControl: 10px margin + 29px button + breathing room */
     --map-nav-reserve: 3.25rem;
-    /* Compact attribution expands on first load (~24px + 10px margin) */
+    /* Compact attribution bar height when expanded (~24px + 10px margin) */
     --map-attrib-bar: 2.5rem;
-    /* Collapsed "i" / expanded width from the right */
-    --map-attrib-reserve: 4.5rem;
+    /* Right clearance: collapsed "i" vs expanded text growing from bottom-right */
+    --map-attrib-reserve: 2.75rem;
+    --map-attrib-reserve-expanded: 4.5rem;
+}
+
+/* Pinch-zoom is enough on touch-primary devices; free the chrome gutter. */
+@media (hover: none) and (pointer: coarse) {
+    :root {
+        --map-nav-reserve: 0rem;
+    }
+
+    .maplibregl-ctrl-top-right {
+        display: none;
+    }
 }
 
 * {
@@ -51,10 +63,6 @@ body {
     right: calc(0.75rem + var(--map-nav-reserve));
     top: 0.75rem;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: flex-start;
-    justify-content: space-between;
     pointer-events: none;
     transition: right 180ms ease;
 }
@@ -63,22 +71,50 @@ body {
     pointer-events: auto;
 }
 
-.map-brand {
-    background: color-mix(in srgb, var(--map-paper) 92%, transparent);
+/* One glass bar: brand + search + add */
+.map-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    /* Fill chrome up to MapLibre zoom; search grows, brand/add stay fixed */
+    width: 100%;
+    max-width: 48rem;
+    min-width: 0;
+    background: color-mix(in srgb, var(--map-paper) 94%, transparent);
     backdrop-filter: blur(6px);
-    padding: 0.55rem 0.8rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.map-toolbar:focus-within {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--map-accent) 45%, transparent);
+}
+
+.map-brand {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 0.65rem;
+    border-right: 1px solid color-mix(in srgb, var(--map-ink) 12%, transparent);
     font-weight: 700;
     letter-spacing: 0.02em;
+    color: var(--map-ink);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.map-brand:hover,
+.map-brand:focus-visible {
+    color: var(--map-accent);
 }
 
 .map-search {
     position: relative;
-    flex: 1 1 12rem;
     display: flex;
+    flex: 1 1 auto;
     flex-wrap: nowrap;
-    gap: 0.35rem;
+    align-items: stretch;
+    gap: 0;
     min-width: 0;
-    max-width: 28rem;
 }
 
 .map-search__input {
@@ -87,26 +123,50 @@ body {
     border: 0;
     padding: 0.55rem 0.75rem;
     font: inherit;
-    background: color-mix(in srgb, var(--map-paper) 94%, transparent);
-    backdrop-filter: blur(6px);
+    background: transparent;
     color: var(--map-ink);
 }
 
-/* Full-width search under brand+add on phones. */
-@media (max-width: 47.99rem) {
+.map-search__input:focus {
+    outline: none;
+}
+
+.map-toolbar__add {
+    border-radius: 0;
+    background: var(--map-accent);
+    color: #fff;
+    gap: 0.35rem;
+    padding-inline: 0.65rem;
+}
+
+.map-toolbar__add:hover,
+.map-toolbar__add:focus-visible {
+    background: color-mix(in srgb, var(--map-accent) 88%, #000);
+}
+
+.map-toolbar__add-label {
+    display: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+@media (min-width: 48rem) {
+    .map-toolbar__add {
+        min-width: auto;
+        padding-inline: 0.85rem;
+    }
+
+    .map-toolbar__add-label {
+        display: inline;
+    }
+}
+
+/* Keep the input usable when brand + locate + add share a narrow row. */
+@media (max-width: 24rem) {
     .map-brand {
-        order: 1;
-    }
-
-    .map-actions {
-        order: 2;
-        margin-left: auto;
-    }
-
-    .map-search {
-        order: 3;
-        flex: 1 1 100%;
-        max-width: none;
+        padding-inline: 0.55rem;
+        font-size: 0.92rem;
     }
 }
 
@@ -163,32 +223,38 @@ body {
     color: #555;
 }
 
-/* Locate is for on-the-go orientation; desktop uses address search. */
+/* Locate sits in the bar as a quiet icon; desktop uses address search. */
+.map-search__locate {
+    background: transparent;
+    color: var(--map-ink);
+    opacity: 0.7;
+}
+
+.map-search__locate:hover,
+.map-search__locate:focus-visible {
+    opacity: 1;
+    background: color-mix(in srgb, var(--map-ink) 8%, transparent);
+}
+
 @media (min-width: 768px) {
     .map-search__locate {
         display: none;
     }
 }
 
-.map-actions {
-    display: flex;
-    flex: 0 0 auto;
-    gap: 0.5rem;
-}
-
 .map-legal {
     position: absolute;
     z-index: 3;
     left: 0.75rem;
-    /* Sit above MapLibre attribution (expanded on first paint) */
-    bottom: calc(0.75rem + var(--map-attrib-bar));
+    /* Default: sit low next to collapsed "i" (after first pan / after dismiss) */
+    bottom: 0.75rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    /* Keep clear of attribution when it grows from bottom-right */
     max-width: calc(100% - 0.75rem - var(--map-attrib-reserve) - 0.5rem);
     font-size: 0.8rem;
     pointer-events: none;
+    transition: bottom 180ms ease, max-width 180ms ease;
 }
 
 .map-legal a {
@@ -204,12 +270,26 @@ body {
     text-decoration: underline;
 }
 
+/* OSM safe harbour: MapLibre starts expanded, collapses on pan; lift legal while open */
+.map-shell:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .map-legal {
+    bottom: calc(0.75rem + var(--map-attrib-bar));
+    max-width: calc(100% - 0.75rem - var(--map-attrib-reserve-expanded) - 0.5rem);
+}
+
 .map-shell--sheet-open .map-legal {
+    bottom: calc(var(--sheet-height) + 0.75rem);
+}
+
+.map-shell--sheet-open:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .map-legal {
     bottom: calc(var(--sheet-height) + 0.75rem + var(--map-attrib-bar));
 }
 
 @media (min-width: 48rem) {
     .map-shell--sheet-open .map-legal {
+        bottom: 0.75rem;
+    }
+
+    .map-shell--sheet-open:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .map-legal {
         bottom: calc(0.75rem + var(--map-attrib-bar));
     }
 }
@@ -399,6 +479,10 @@ body {
 
     .map-shell--sheet-open .map-legal {
         max-width: calc(100% - var(--sheet-width) - 0.75rem - var(--map-attrib-reserve) - 0.5rem);
+    }
+
+    .map-shell--sheet-open:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .map-legal {
+        max-width: calc(100% - var(--sheet-width) - 0.75rem - var(--map-attrib-reserve-expanded) - 0.5rem);
     }
 
     .map-sheet {

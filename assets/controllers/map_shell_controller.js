@@ -63,7 +63,8 @@ export default class extends Controller {
                 style: this.styleUrlValue,
                 center: [this.centerLngValue, this.centerLatValue],
                 zoom: this.zoomValue,
-                // Compact "i" keeps the bottom edge free for .map-legal (Impressum/Datenschutz).
+                // Custom compact control: OSM-visible on load, collapses to "i" on pan.
+                // .map-legal bottom offset follows via CSS :has(.maplibregl-compact-show).
                 attributionControl: false,
             });
 
