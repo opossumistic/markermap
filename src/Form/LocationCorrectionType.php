@@ -68,7 +68,7 @@ final class LocationCorrectionType extends AbstractType
                 ],
             ])
             ->add('email', EmailType::class, [
-                'label' => 'E-Mail (optional, für Rückfragen)',
+                'label' => 'E-Mail (optional — Rückfragen & Info bei Freigabe)',
                 'required' => false,
             ])
             ->add('website', TextType::class, [

@@ -1,0 +1,14 @@
+Hallo,
+
+{% if isNew %}
+dein Vorschlag für die Tauschmap-Karte wurde freigegeben und ist jetzt mit Beschreibung und ggf. Foto sichtbar.
+{% else %}
+deine Änderung an einem Tauschmap-Eintrag wurde geprüft und übernommen.
+{% endif %}
+{% if locationLabel %}
+Eintrag: {{ locationLabel }}
+{% endif %}
+Karte: {{ mapUrl }}
+
+Viele Grüße
+Tauschmap

@@ -15,6 +15,7 @@ final class LocationWorkflow
         private readonly EntityManagerInterface $entityManager,
         private readonly SubmissionRepository $submissionRepository,
         private readonly ReverseGeocoder $reverseGeocoder,
+        private readonly SubmissionMailer $submissionMailer,
     ) {
     }
 
@@ -38,6 +39,8 @@ final class LocationWorkflow
         $this->entityManager->persist($submission);
         $this->entityManager->flush();
 
+        $this->submissionMailer->notifyAdminNewSubmission($submission);
+
         return $submission;
     }
 
@@ -49,6 +52,8 @@ final class LocationWorkflow
         $submission = new Submission(SubmissionType::Correction, $payload, $location, $email);
         $this->entityManager->persist($submission);
         $this->entityManager->flush();
+
+        $this->submissionMailer->notifyAdminNewSubmission($submission);
 
         return $submission;
     }
@@ -65,6 +70,8 @@ final class LocationWorkflow
 
         $this->entityManager->persist($submission);
         $this->entityManager->flush();
+
+        $this->submissionMailer->notifyAdminNewSubmission($submission);
 
         return $submission;
     }
@@ -120,6 +127,8 @@ final class LocationWorkflow
 
         $submission->approve();
         $this->entityManager->flush();
+
+        $this->submissionMailer->notifySubmitterApproved($submission);
     }
 
     public function reject(Submission $submission): void

@@ -1,0 +1,11 @@
+Neue Moderationsmeldung auf Tauschmap
+
+Typ: {{ typeLabel }}
+Submission: #{{ submission.id }}
+{% if locationLabel %}Location: {{ locationLabel }}
+{% endif %}
+Eingang: {{ submission.createdAt|date('Y-m-d H:i') }}
+{% if submission.email %}Absender-Mail: {{ submission.email }}
+{% endif %}
+
+Inbox: {{ inboxUrl }}
