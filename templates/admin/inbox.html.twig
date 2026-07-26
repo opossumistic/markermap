@@ -55,7 +55,14 @@
                                     —
                                 {% endif %}
                             </td>
-                            <td><pre style="white-space: pre-wrap; margin: 0;">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
+                            <td>
+                                {% if submission.payload.reason is defined and submission.payload.reason %}
+                                    <p style="margin:0 0 .5rem;padding:.4rem .55rem;background:#fff8e6;border-left:3px solid #c9a227;">
+                                        <strong>Hinweis:</strong> {{ submission.payload.reason }}
+                                    </p>
+                                {% endif %}
+                                <pre style="white-space: pre-wrap; margin: 0;">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                            </td>
                             <td>{{ submission.createdAt|date('Y-m-d H:i') }}</td>
                             <td>
                                 <form method="post" action="{{ path('admin_submission_approve', {id: submission.id}) }}" style="display:inline;">

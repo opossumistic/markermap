@@ -3,6 +3,7 @@
 namespace App\Form\Data;
 
 use App\Enum\LocationCategory;
+use App\Validation\LocationFieldLimits;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -18,7 +19,10 @@ final class NewLocationSubmissionData
     #[Assert\Regex(pattern: '/^\d{5}$/', message: 'Bitte eine 5-stellige PLZ angeben.')]
     public ?string $postalCode = null;
 
-    #[Assert\Length(max: 2000)]
+    #[Assert\Length(
+        max: LocationFieldLimits::DESCRIPTION_MAX,
+        maxMessage: 'Bitte höchstens {{ limit }} Zeichen.',
+    )]
     public ?string $description = null;
 
     /** @var list<LocationCategory> */
@@ -41,9 +45,9 @@ final class NewLocationSubmissionData
     public ?string $website = null;
 
     #[Assert\Image(
-        maxSize: '2M',
+        maxSize: LocationFieldLimits::IMAGE_MAX_SIZE,
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        mimeTypesMessage: 'Bitte ein JPEG-, PNG- oder WebP-Bild hochladen (max. 2 MB).',
+        mimeTypesMessage: 'Bitte ein JPEG-, PNG- oder WebP-Bild hochladen (max. '.LocationFieldLimits::IMAGE_MAX_SIZE_LABEL.').',
     )]
     public ?UploadedFile $image = null;
 

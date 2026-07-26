@@ -20,7 +20,9 @@ export default class extends Controller {
         'postalCode',
         'searchQuery',
         'searchResults',
+        'locateButton',
         'correctionLocationId',
+        'reportGoneButton',
     ];
 
     static values = {
@@ -31,6 +33,7 @@ export default class extends Controller {
         reportUrlTemplate: String,
         reportToken: String,
         openAdd: Boolean,
+        focusId: { type: Number, default: 0 },
         centerLng: { type: Number, default: 9.9937 },
         centerLat: { type: Number, default: 53.5511 },
         zoom: { type: Number, default: 11 },
@@ -47,6 +50,7 @@ export default class extends Controller {
     reverseTimer = null;
     reverseAbort = null;
     reverseSeq = 0;
+    searchMessageTimer = null;
     /** @type {Record<string, unknown>|null} */
     detailProps = null;
 
@@ -59,9 +63,14 @@ export default class extends Controller {
                 style: this.styleUrlValue,
                 center: [this.centerLngValue, this.centerLatValue],
                 zoom: this.zoomValue,
-                attributionControl: true,
+                // Compact "i" keeps the bottom edge free for .map-legal (Impressum/Datenschutz).
+                attributionControl: false,
             });
 
+            this.map.addControl(
+                new this.maplibregl.AttributionControl({ compact: true }),
+                'bottom-right',
+            );
             this.map.addControl(new this.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
             this.map.on('load', () => {
@@ -103,6 +112,7 @@ export default class extends Controller {
     disconnect() {
         this.clearLocationMarkers();
         this.cancelReverse();
+        this.clearSearchMessageTimer();
         if (this.pickMarker) {
             this.pickMarker.remove();
             this.pickMarker = null;
@@ -130,7 +140,7 @@ export default class extends Controller {
             return;
         }
 
-        this.showSearchMessage('Suche…');
+        this.showSearchMessage('Suche…', { dismissAfter: 0 });
 
         try {
             const url = new URL(this.geocodeUrlValue, window.location.origin);
@@ -155,11 +165,72 @@ export default class extends Controller {
         }
     }
 
+    /**
+     * Pan map to browser GPS position. No pin / pick mode — orientation only.
+     */
+    goToCurrentLocation(event) {
+        event?.preventDefault();
+        if (!this.map) {
+            return;
+        }
+
+        if (!window.isSecureContext || !navigator.geolocation) {
+            this.showSearchMessage('Standortbestimmung ist hier nicht verfügbar.');
+            return;
+        }
+
+        this.setLocateBusy(true);
+        this.showSearchMessage('Standort wird ermittelt…', { dismissAfter: 0 });
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                this.setLocateBusy(false);
+                const { latitude: lat, longitude: lng } = position.coords;
+                if (!this.inBounds(lng, lat)) {
+                    this.showSearchMessage('Standort liegt außerhalb Hamburgs.');
+                    return;
+                }
+
+                this.clearSearchResults();
+                this.map.flyTo({
+                    center: [lng, lat],
+                    zoom: Math.max(this.map.getZoom(), 14),
+                });
+            },
+            (error) => {
+                this.setLocateBusy(false);
+                let message = 'Standortbestimmung fehlgeschlagen.';
+                if (error.code === error.PERMISSION_DENIED) {
+                    message = 'Standortzugriff wurde verweigert.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    message = 'Standort konnte nicht ermittelt werden.';
+                } else if (error.code === error.TIMEOUT) {
+                    message = 'Standortbestimmung hat zu lange gedauert.';
+                }
+                this.showSearchMessage(message);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 12000,
+                maximumAge: 60000,
+            },
+        );
+    }
+
+    setLocateBusy(busy) {
+        if (!this.hasLocateButtonTarget) {
+            return;
+        }
+        this.locateButtonTarget.disabled = busy;
+        this.locateButtonTarget.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
     renderSearchResults(results) {
         if (!this.hasSearchResultsTarget) {
             return;
         }
 
+        this.clearSearchMessageTimer();
         this.searchResultsTarget.replaceChildren();
         for (const hit of results) {
             const li = document.createElement('li');
@@ -174,19 +245,30 @@ export default class extends Controller {
         this.searchResultsTarget.hidden = false;
     }
 
-    showSearchMessage(message) {
+    showSearchMessage(message, { dismissAfter = 4500 } = {}) {
         if (!this.hasSearchResultsTarget) {
             return;
         }
+        this.clearSearchMessageTimer();
         this.searchResultsTarget.replaceChildren();
         const li = document.createElement('li');
         li.className = 'map-search__empty';
         li.textContent = message;
         this.searchResultsTarget.append(li);
         this.searchResultsTarget.hidden = false;
+
+        if (dismissAfter > 0) {
+            this.searchMessageTimer = window.setTimeout(() => this.clearSearchResults(), dismissAfter);
+        }
+    }
+
+    clearSearchMessageTimer() {
+        clearTimeout(this.searchMessageTimer);
+        this.searchMessageTimer = null;
     }
 
     clearSearchResults() {
+        this.clearSearchMessageTimer();
         if (!this.hasSearchResultsTarget) {
             return;
         }
@@ -290,7 +372,7 @@ export default class extends Controller {
         const props = this.detailProps?.id === locationId ? this.detailProps : { id: locationId };
         this.mode = 'correct';
         this.fillCorrectionForm(props);
-        this.sheetTitleTarget.textContent = 'Eintrag bearbeiten';
+        this.sheetTitleTarget.textContent = 'Änderung melden';
         this.openSheet('correct');
         requestAnimationFrame(() => this.map?.resize());
     }
@@ -310,8 +392,12 @@ export default class extends Controller {
             form.reset();
         }
 
+        const locationId = String(props.id ?? '');
         if (this.hasCorrectionLocationIdTarget) {
-            this.correctionLocationIdTarget.value = String(props.id ?? '');
+            this.correctionLocationIdTarget.value = locationId;
+        }
+        if (this.hasReportGoneButtonTarget) {
+            this.reportGoneButtonTarget.dataset.locationId = locationId;
         }
 
         const title = panel.querySelector('[name="location_correction[title]"]');
@@ -376,6 +462,55 @@ export default class extends Controller {
 
         const geojson = await response.json();
         this.renderMarkers(geojson);
+        this.focusLocation(geojson);
+    }
+
+    /**
+     * After a successful proposal redirect (?focus=id): zoom to the pending pin and open detail.
+     */
+    focusLocation(geojson) {
+        const focusId = this.focusIdValue;
+        if (!focusId || !this.map) {
+            return;
+        }
+
+        const feature = (geojson.features ?? []).find(
+            (item) => Number(item.properties?.id) === focusId,
+        );
+        if (!feature?.geometry?.coordinates) {
+            return;
+        }
+
+        const [lng, lat] = feature.geometry.coordinates;
+        const props = feature.properties ?? {};
+
+        this.showDetail(props);
+        // Sheet open changes canvas size (CSS transition ~180ms) — resize after layout settles.
+        requestAnimationFrame(() => {
+            this.map?.resize();
+            window.setTimeout(() => {
+                if (!this.map) {
+                    return;
+                }
+                this.map.resize();
+                this.map.flyTo({
+                    center: [lng, lat],
+                    zoom: Math.max(this.map.getZoom(), 15),
+                });
+            }, 200);
+        });
+
+        this.clearFocusFromUrl();
+    }
+
+    clearFocusFromUrl() {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('focus')) {
+            return;
+        }
+        url.searchParams.delete('focus');
+        const next = `${url.pathname}${url.search}${url.hash}`;
+        window.history.replaceState({}, '', next);
     }
 
     clearLocationMarkers() {
@@ -577,8 +712,7 @@ export default class extends Controller {
         const id = Number(props.id);
         const actions = Number.isFinite(id) && id > 0 && !isPending
             ? `<div class="map-detail__actions">
-                <button type="button" class="map-btn map-btn--block" data-action="map-shell#startCorrect" data-location-id="${id}">Bearbeiten</button>
-                <button type="button" class="map-btn map-btn--block map-btn--muted" data-action="map-shell#reportGone" data-location-id="${id}">Nicht mehr vorhanden melden</button>
+                <button type="button" class="map-btn map-btn--block" data-action="map-shell#startCorrect" data-location-id="${id}">Änderung melden</button>
                </div>`
             : '';
 

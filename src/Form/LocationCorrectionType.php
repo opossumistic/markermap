@@ -4,6 +4,7 @@ namespace App\Form;
 
 use App\Enum\LocationCategory;
 use App\Form\Data\LocationCorrectionData;
+use App\Validation\LocationFieldLimits;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -35,7 +36,11 @@ final class LocationCorrectionType extends AbstractType
                 'label' => 'Beschreibung',
                 'required' => false,
                 'empty_data' => null,
-                'attr' => ['rows' => 4],
+                'help' => sprintf('Max. %d Zeichen.', LocationFieldLimits::DESCRIPTION_MAX),
+                'attr' => [
+                    'rows' => 4,
+                    'maxlength' => LocationFieldLimits::DESCRIPTION_MAX,
+                ],
             ])
             ->add('categories', EnumType::class, [
                 'class' => LocationCategory::class,
@@ -49,7 +54,18 @@ final class LocationCorrectionType extends AbstractType
             ->add('image', FileType::class, [
                 'label' => 'Neues Foto (optional)',
                 'required' => false,
-                'help' => 'JPEG, PNG oder WebP, max. 2 MB. Ohne Upload bleibt das aktuelle Foto. Sichtbar erst nach Freigabe.',
+                'help' => 'JPEG, PNG oder WebP, max. '.LocationFieldLimits::IMAGE_MAX_SIZE_LABEL.'. Wird verkleinert und ohne Metadaten gespeichert. Ohne Upload bleibt das aktuelle Foto. Sichtbar erst nach Freigabe.',
+            ])
+            ->add('reason', TextareaType::class, [
+                'label' => 'Hinweis für die Prüfung (optional)',
+                'required' => false,
+                'empty_data' => null,
+                'help' => sprintf('Nur intern sichtbar, max. %d Zeichen — z. B. warum die Änderung nötig ist.', LocationFieldLimits::REASON_MAX),
+                'attr' => [
+                    'rows' => 2,
+                    'maxlength' => LocationFieldLimits::REASON_MAX,
+                    'placeholder' => 'z. B. Titel war veraltet, Box umbenannt…',
+                ],
             ])
             ->add('email', EmailType::class, [
                 'label' => 'E-Mail (optional, für Rückfragen)',

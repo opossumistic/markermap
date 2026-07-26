@@ -26,11 +26,14 @@ final class HomeController extends AbstractController
         $form = $this->createForm(NewLocationSubmissionType::class, new NewLocationSubmissionData());
         $correctionForm = $this->createForm(LocationCorrectionType::class, new LocationCorrectionData());
 
+        $focusId = $request->query->getInt('focus');
+
         return $this->render('home/index.html.twig', [
             'mapStyleUrl' => $this->mapStyleUrl,
             'form' => $form,
             'correctionForm' => $correctionForm,
             'openAdd' => $request->query->getBoolean('add'),
+            'focusId' => $focusId > 0 ? $focusId : null,
         ]);
     }
 }

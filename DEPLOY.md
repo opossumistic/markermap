@@ -11,7 +11,7 @@ Deploy lädt die App nach `markermap/`; darunter entstehen `public/`, `src/`, `v
 
 ## Voraussetzungen Hosting
 
-- PHP ≥ 8.2, Extensions: `pdo_sqlite`, `ctype`, `iconv`, `mbstring`, `intl`, **`zip`** (für Vendor-Unpack)
+- PHP ≥ 8.2, Extensions: `pdo_sqlite`, `ctype`, `iconv`, `mbstring`, `intl`, **`gd`** (JPEG/PNG/WebP — Foto-Normalisierung), **`zip`** (für Vendor-Unpack)
 - Domain/Subdomain-Docroot → `/public_html/markermap/public`
 - Schreibrechte: `var/`, `public/uploads/`, `vendor/` (Replace beim Unpack)
 

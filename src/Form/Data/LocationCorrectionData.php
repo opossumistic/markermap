@@ -4,6 +4,7 @@ namespace App\Form\Data;
 
 use App\Entity\Location;
 use App\Enum\LocationCategory;
+use App\Validation\LocationFieldLimits;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -16,7 +17,10 @@ final class LocationCorrectionData
     #[Assert\Length(max: 180)]
     public ?string $title = null;
 
-    #[Assert\Length(max: 2000)]
+    #[Assert\Length(
+        max: LocationFieldLimits::DESCRIPTION_MAX,
+        maxMessage: 'Bitte höchstens {{ limit }} Zeichen.',
+    )]
     public ?string $description = null;
 
     /** @var list<LocationCategory> */
@@ -26,13 +30,20 @@ final class LocationCorrectionData
     #[Assert\Length(max: 180)]
     public ?string $email = null;
 
+    /** Internal moderation hint — stored on submission only, never applied to Location. */
+    #[Assert\Length(
+        max: LocationFieldLimits::REASON_MAX,
+        maxMessage: 'Bitte höchstens {{ limit }} Zeichen.',
+    )]
+    public ?string $reason = null;
+
     /** Honeypot */
     public ?string $website = null;
 
     #[Assert\Image(
-        maxSize: '2M',
+        maxSize: LocationFieldLimits::IMAGE_MAX_SIZE,
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        mimeTypesMessage: 'Bitte ein JPEG-, PNG- oder WebP-Bild hochladen (max. 2 MB).',
+        mimeTypesMessage: 'Bitte ein JPEG-, PNG- oder WebP-Bild hochladen (max. '.LocationFieldLimits::IMAGE_MAX_SIZE_LABEL.').',
     )]
     public ?UploadedFile $image = null;
 
@@ -64,6 +75,18 @@ final class LocationCorrectionData
             || $payload['description'] !== null
             || $payload['categories'] !== []
             || $this->image !== null;
+    }
+
+    /** Trimmed moderation reason, or null if empty. */
+    public function moderationReason(): ?string
+    {
+        if ($this->reason === null) {
+            return null;
+        }
+
+        $reason = trim($this->reason);
+
+        return $reason !== '' ? $reason : null;
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Form;
 
 use App\Enum\LocationCategory;
 use App\Form\Data\NewLocationSubmissionData;
+use App\Validation\LocationFieldLimits;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -53,12 +54,16 @@ final class NewLocationSubmissionType extends AbstractType
             ->add('description', TextareaType::class, [
                 'label' => 'Kurzbeschreibung',
                 'required' => false,
-                'attr' => ['rows' => 4],
+                'help' => sprintf('Max. %d Zeichen.', LocationFieldLimits::DESCRIPTION_MAX),
+                'attr' => [
+                    'rows' => 4,
+                    'maxlength' => LocationFieldLimits::DESCRIPTION_MAX,
+                ],
             ])
             ->add('image', FileType::class, [
                 'label' => 'Foto (optional)',
                 'required' => false,
-                'help' => 'JPEG, PNG oder WebP, max. 2 MB.',
+                'help' => 'JPEG, PNG oder WebP, max. '.LocationFieldLimits::IMAGE_MAX_SIZE_LABEL.'. Wird verkleinert und ohne Metadaten gespeichert.',
             ])
             ->add('lat', NumberType::class, [
                 'label' => false,

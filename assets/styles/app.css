@@ -5,6 +5,12 @@
     --map-disputed: #8a6d3b;
     --sheet-height: min(48dvh, 28rem);
     --sheet-width: min(28rem, 100%);
+    /* MapLibre NavigationControl: 10px margin + 29px button + breathing room */
+    --map-nav-reserve: 3.25rem;
+    /* Compact attribution expands on first load (~24px + 10px margin) */
+    --map-attrib-bar: 2.5rem;
+    /* Collapsed "i" / expanded width from the right */
+    --map-attrib-reserve: 4.5rem;
 }
 
 * {
@@ -41,7 +47,8 @@ body {
     position: absolute;
     z-index: 3;
     left: 0.75rem;
-    right: 0.75rem;
+    /* Keep clear of MapLibre zoom (+/−) in top-right */
+    right: calc(0.75rem + var(--map-nav-reserve));
     top: 0.75rem;
     display: flex;
     flex-wrap: wrap;
@@ -66,16 +73,16 @@ body {
 
 .map-search {
     position: relative;
-    flex: 1 1 14rem;
+    flex: 1 1 12rem;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.35rem;
-    min-width: min(100%, 14rem);
+    min-width: 0;
     max-width: 28rem;
 }
 
 .map-search__input {
-    flex: 1 1 10rem;
+    flex: 1 1 auto;
     min-width: 0;
     border: 0;
     padding: 0.55rem 0.75rem;
@@ -83,6 +90,36 @@ body {
     background: color-mix(in srgb, var(--map-paper) 94%, transparent);
     backdrop-filter: blur(6px);
     color: var(--map-ink);
+}
+
+/* Full-width search under brand+add on phones. */
+@media (max-width: 47.99rem) {
+    .map-brand {
+        order: 1;
+    }
+
+    .map-actions {
+        order: 2;
+        margin-left: auto;
+    }
+
+    .map-search {
+        order: 3;
+        flex: 1 1 100%;
+        max-width: none;
+    }
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .map-search__results {
@@ -126,8 +163,16 @@ body {
     color: #555;
 }
 
+/* Locate is for on-the-go orientation; desktop uses address search. */
+@media (min-width: 768px) {
+    .map-search__locate {
+        display: none;
+    }
+}
+
 .map-actions {
     display: flex;
+    flex: 0 0 auto;
     gap: 0.5rem;
 }
 
@@ -135,11 +180,13 @@ body {
     position: absolute;
     z-index: 3;
     left: 0.75rem;
-    bottom: 0.75rem;
+    /* Sit above MapLibre attribution (expanded on first paint) */
+    bottom: calc(0.75rem + var(--map-attrib-bar));
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    max-width: calc(100% - 5rem);
+    /* Keep clear of attribution when it grows from bottom-right */
+    max-width: calc(100% - 0.75rem - var(--map-attrib-reserve) - 0.5rem);
     font-size: 0.8rem;
     pointer-events: none;
 }
@@ -158,12 +205,12 @@ body {
 }
 
 .map-shell--sheet-open .map-legal {
-    bottom: calc(var(--sheet-height) + 0.75rem);
+    bottom: calc(var(--sheet-height) + 0.75rem + var(--map-attrib-bar));
 }
 
 @media (min-width: 48rem) {
     .map-shell--sheet-open .map-legal {
-        bottom: 0.75rem;
+        bottom: calc(0.75rem + var(--map-attrib-bar));
     }
 }
 
@@ -207,8 +254,7 @@ body {
     color: var(--map-ink);
 }
 
-.map-btn,
-.map-actions a {
+.map-btn {
     appearance: none;
     border: 0;
     text-decoration: none;
@@ -220,14 +266,37 @@ body {
     cursor: pointer;
 }
 
-.map-actions a.secondary,
+.map-btn--icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 0.55rem;
+    min-width: 2.5rem;
+    line-height: 0;
+}
+
+.map-btn--icon svg {
+    display: block;
+}
+
 .map-btn.secondary {
     background: color-mix(in srgb, var(--map-paper) 92%, transparent);
     color: var(--map-ink);
 }
 
+.map-btn--block {
+    display: block;
+    width: 100%;
+}
+
 .map-btn--muted {
     background: color-mix(in srgb, var(--map-ink) 55%, #888);
+}
+
+.map-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
 }
 
 .map-detail__actions {
@@ -324,7 +393,12 @@ body {
     }
 
     .map-shell--sheet-open .map-chrome {
-        right: calc(var(--sheet-width) + 0.75rem);
+        /* Sheet + zoom control sit on the canvas right edge */
+        right: calc(var(--sheet-width) + 0.75rem + var(--map-nav-reserve));
+    }
+
+    .map-shell--sheet-open .map-legal {
+        max-width: calc(100% - var(--sheet-width) - 0.75rem - var(--map-attrib-reserve) - 0.5rem);
     }
 
     .map-sheet {

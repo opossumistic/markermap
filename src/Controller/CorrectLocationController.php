@@ -30,7 +30,7 @@ final class CorrectLocationController extends AbstractController
         $form->handleRequest($request);
 
         if (!$form->isSubmitted() || !$form->isValid()) {
-            $this->addFlash('error', 'Ergänzung ungültig — bitte Eingaben prüfen.');
+            $this->addFlash('error', 'Änderung ungültig — bitte Eingaben prüfen.');
 
             return $this->redirectToRoute('home');
         }
@@ -42,7 +42,7 @@ final class CorrectLocationController extends AbstractController
         }
 
         if ($data->website !== null && trim($data->website) !== '') {
-            $this->addFlash('success', 'Danke! Deine Ergänzung wird geprüft und erscheint nach Freigabe.');
+            $this->addFlash('success', 'Danke! Deine Änderung wird geprüft und erscheint nach Freigabe.');
 
             return $this->redirectToRoute('home');
         }
@@ -55,7 +55,7 @@ final class CorrectLocationController extends AbstractController
 
         $location = $locations->find($data->locationId);
         if ($location === null || !$location->getStatus()->isVisibleOnMap()) {
-            $this->addFlash('error', 'Eintrag nicht gefunden oder nicht ergänzbar.');
+            $this->addFlash('error', 'Eintrag nicht gefunden oder nicht änderbar.');
 
             return $this->redirectToRoute('home');
         }
@@ -71,8 +71,13 @@ final class CorrectLocationController extends AbstractController
             return $this->redirectToRoute('home');
         }
 
+        // Moderation-only: never part of the editable diff / Location.applyPayload.
+        if (($reason = $data->moderationReason()) !== null) {
+            $payload['reason'] = $reason;
+        }
+
         $workflow->submitCorrection($location, $payload, $data->email);
-        $this->addFlash('success', 'Danke! Deine Ergänzung wird geprüft und erscheint nach Freigabe.');
+        $this->addFlash('success', 'Danke! Deine Änderung wird geprüft und erscheint nach Freigabe.');
 
         return $this->redirectToRoute('home');
     }

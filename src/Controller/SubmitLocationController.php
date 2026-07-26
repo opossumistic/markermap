@@ -58,10 +58,12 @@ final class SubmitLocationController extends AbstractController
                 $payload['image_path'] = $images->store($data->image);
             }
 
-            $workflow->submitNew($payload, $data->email);
+            $submission = $workflow->submitNew($payload, $data->email);
             $this->addFlash('success', 'Danke! Dein Vorschlag ist als ausgegrauter Punkt auf der Karte und wird geprüft.');
 
-            return $this->redirectToRoute('home');
+            $locationId = $submission->getLocation()?->getId();
+
+            return $this->redirectToRoute('home', $locationId ? ['focus' => $locationId] : []);
         }
 
         if ($form->isSubmitted()) {
@@ -73,6 +75,7 @@ final class SubmitLocationController extends AbstractController
             'form' => $form,
             'correctionForm' => $this->createForm(LocationCorrectionType::class, new LocationCorrectionData()),
             'openAdd' => true,
+            'focusId' => null,
         ]);
     }
 }

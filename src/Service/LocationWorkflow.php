@@ -177,7 +177,9 @@ final class LocationWorkflow
             throw new \DomainException('Correction submission requires a location.');
         }
 
-        $location->applyPayload($submission->getPayload());
+        $payload = $submission->getPayload();
+        unset($payload['reason']); // moderation hint only — never published on Location
+        $location->applyPayload($payload);
     }
 
     private function approveStatusReport(Submission $submission): void
