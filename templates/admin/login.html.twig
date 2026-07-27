@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block body %}
+    <main class="admin">
+        <p><a href="{{ path('home') }}">← Zur Karte</a></p>
+        <h1>Admin Login</h1>
+
+        {% if error %}
+            <p class="admin__error" role="alert">Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.</p>
+        {% endif %}
+
+        <form class="admin__form" action="{{ path('admin_login') }}" method="post" data-turbo="false">
+            <label class="admin__field">
+                <span>Benutzername</span>
+                <input type="text" name="_username" value="{{ last_username }}" required autocomplete="username" autocapitalize="none" spellcheck="false">
+            </label>
+            <label class="admin__field">
+                <span>Passwort</span>
+                <input type="password" name="_password" required autocomplete="current-password">
+            </label>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+            <button type="submit" class="admin__submit">Anmelden</button>
+        </form>
+    </main>
+{% endblock %}

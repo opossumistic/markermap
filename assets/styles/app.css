@@ -294,6 +294,258 @@ body {
     }
 }
 
+.admin {
+    max-width: 28rem;
+    margin: 2rem auto;
+    padding: 0 1rem 3rem;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+    color: var(--map-ink);
+}
+
+.admin--wide {
+    max-width: 40rem;
+}
+
+.admin h1 {
+    margin-top: 0;
+}
+
+.admin__error {
+    padding: 0.75rem 0.9rem;
+    background: color-mix(in srgb, #a40000 12%, var(--map-paper));
+    border-left: 3px solid #a40000;
+}
+
+.admin__flash {
+    padding: 0.65rem 0.8rem;
+    border-left: 3px solid var(--map-accent);
+    background: color-mix(in srgb, var(--map-accent) 12%, var(--map-paper));
+}
+
+.admin__flash--error {
+    border-left-color: #a40000;
+    background: color-mix(in srgb, #a40000 12%, var(--map-paper));
+}
+
+.admin__form {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.admin__field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.admin__field input {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    font: inherit;
+    color: var(--map-ink);
+    background: #fff;
+    border: 1px solid #cfc8bc;
+}
+
+.admin__submit {
+    appearance: none;
+    justify-self: start;
+    border: 0;
+    padding: 0.65rem 1rem;
+    font: inherit;
+    color: var(--map-paper);
+    background: var(--map-ink);
+    cursor: pointer;
+}
+
+.admin__nav {
+    margin: 0 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+}
+
+.admin__logout {
+    display: inline;
+    margin: 0;
+}
+
+.admin__logout button {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    background: none;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.admin-list {
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-card {
+    background: #fff;
+    border: 1px solid #cfc8bc;
+    padding: 0.85rem 0.9rem 1rem;
+}
+
+.admin-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.65rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #e5dfd4;
+}
+
+.admin-card__id {
+    font-weight: 700;
+}
+
+.admin-card__type,
+.admin-card__status {
+    font-size: 0.9rem;
+    padding: 0.1rem 0.4rem;
+    background: color-mix(in srgb, var(--map-ink) 8%, transparent);
+}
+
+.admin-card__meta {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--map-ink) 65%, transparent);
+}
+
+.admin-card__coords {
+    margin: 0;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--map-ink) 65%, transparent);
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-card__body {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.admin-card__section {
+    min-width: 0;
+}
+
+.admin-card__label {
+    margin: 0 0 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--map-ink) 55%, transparent);
+}
+
+.admin-card__title {
+    margin: 0;
+    font-weight: 600;
+}
+
+.admin-card__text {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.admin-card__text .admin-card__status {
+    display: inline-block;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+
+.admin-card__note {
+    margin: 0;
+    padding: 0.5rem 0.65rem;
+    background: color-mix(in srgb, var(--map-disputed) 18%, var(--map-paper));
+    border-left: 3px solid var(--map-disputed);
+}
+
+.admin-card__image {
+    display: block;
+    max-width: 12rem;
+}
+
+.admin-card__image img {
+    display: block;
+    width: 100%;
+    max-height: 9rem;
+    object-fit: cover;
+    border: 1px solid #cfc8bc;
+}
+
+.admin-card__payload {
+    margin: 0;
+    padding: 0.65rem 0.7rem;
+    max-height: 14rem;
+    overflow: auto;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    background: color-mix(in srgb, var(--map-ink) 4%, var(--map-paper));
+    border: 1px solid #e5dfd4;
+}
+
+.admin-card__danger {
+    margin-top: 0.45rem;
+}
+
+.admin-card__danger button {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    color: #a40000;
+    background: none;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.admin-card__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.admin-card__actions form:only-child {
+    grid-column: 1 / -1;
+}
+
+.admin-card__btn {
+    appearance: none;
+    width: 100%;
+    border: 0;
+    padding: 0.7rem 0.75rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.admin-card__btn--approve {
+    color: #fff;
+    background: var(--map-accent);
+}
+
+.admin-card__btn--reject {
+    color: #fff;
+    background: #a40000;
+}
+
 .legal {
     max-width: 40rem;
     margin: 2rem auto;

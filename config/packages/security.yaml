@@ -13,13 +13,24 @@ security:
         admin:
             pattern: ^/admin
             provider: admin_env
-            http_basic:
-                realm: MarkerMap Admin
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                enable_csrf: true
+                default_target_path: admin_inbox
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
+            logout:
+                path: admin_logout
+                target: admin_login
+                enable_csrf: true
         main:
             lazy: true
             security: false
 
     access_control:
+        - { path: ^/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
 
 when@test:

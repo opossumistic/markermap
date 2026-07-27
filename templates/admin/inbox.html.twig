@@ -3,81 +3,87 @@
 {% block title %}Admin Inbox{% endblock %}
 
 {% block body %}
-    <main style="max-width: 56rem; margin: 2rem auto; font-family: system-ui, sans-serif;">
-        <p><a href="{{ path('admin_locations') }}">Locations</a> · <a href="{{ path('home') }}">Karte</a></p>
+    <main class="admin admin--wide">
+        <p class="admin__nav">
+            <a href="{{ path('admin_locations') }}">Locations</a>
+            · <a href="{{ path('home') }}">Karte</a>
+            ·
+            <form action="{{ path('admin_logout') }}" method="post" class="admin__logout" data-turbo="false">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                <button type="submit">Logout</button>
+            </form>
+        </p>
         <h1>Moderations-Inbox</h1>
 
         {% for label, messages in app.flashes %}
             {% for message in messages %}
-                <p><strong>{{ label }}:</strong> {{ message }}</p>
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
             {% endfor %}
         {% endfor %}
 
         {% if submissions is empty %}
             <p>Keine offenen Submissions.</p>
         {% else %}
-            <table style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th align="left">ID</th>
-                        <th align="left">Typ</th>
-                        <th align="left">Location</th>
-                        <th align="left">Payload</th>
-                        <th align="left">Eingang</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for submission in submissions %}
-                        <tr style="border-top: 1px solid #ccc; vertical-align: top;">
-                            <td>#{{ submission.id }}</td>
-                            <td>
-                                {{ submission.type.value }}
-                                {% if submission.payload.image_path is defined and submission.payload.image_path %}
-                                    <br>
-                                    <a href="/{{ submission.payload.image_path }}" target="_blank" rel="noopener noreferrer" title="Bild in neuem Tab öffnen">
-                                        <img src="/{{ submission.payload.image_path }}" alt="" style="max-width:8rem;max-height:6rem;object-fit:cover;margin-top:.35rem;cursor:pointer;">
-                                    </a>
-                                {% endif %}
-                            </td>
-                            <td>
+            <ul class="admin-list">
+                {% for submission in submissions %}
+                    <li class="admin-card">
+                        <header class="admin-card__head">
+                            <span class="admin-card__id">#{{ submission.id }}</span>
+                            <span class="admin-card__type">{{ submission.type.value }}</span>
+                            <time class="admin-card__meta" datetime="{{ submission.createdAt|date('c') }}">{{ submission.createdAt|date('Y-m-d H:i') }}</time>
+                        </header>
+
+                        <div class="admin-card__body">
+                            <section class="admin-card__section">
+                                <h2 class="admin-card__label">Location</h2>
                                 {% if submission.location %}
-                                    #{{ submission.location.id }} {{ submission.location.displayLabel }}
-                                    <br><small>{{ submission.location.status.value }}</small>
+                                    <p class="admin-card__text">
+                                        #{{ submission.location.id }} {{ submission.location.displayLabel }}
+                                        <span class="admin-card__status">{{ submission.location.status.value }}</span>
+                                    </p>
                                     {% if submission.location.status.value != 'removed' %}
-                                        <form method="post" action="{{ path('admin_location_remove', {id: submission.location.id}) }}" style="margin-top:.35rem;" onsubmit="return confirm('Location #{{ submission.location.id }} von der Karte entfernen?');">
+                                        <form method="post" action="{{ path('admin_location_remove', {id: submission.location.id}) }}" class="admin-card__danger" onsubmit="return confirm('Location #{{ submission.location.id }} von der Karte entfernen?');">
                                             <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ submission.location.id) }}">
                                             <input type="hidden" name="redirect" value="admin_inbox">
                                             <button type="submit">Location entfernen</button>
                                         </form>
                                     {% endif %}
                                 {% else %}
-                                    —
+                                    <p class="admin-card__text">—</p>
                                 {% endif %}
-                            </td>
-                            <td>
-                                {% if submission.payload.reason is defined and submission.payload.reason %}
-                                    <p style="margin:0 0 .5rem;padding:.4rem .55rem;background:#fff8e6;border-left:3px solid #c9a227;">
-                                        <strong>Hinweis:</strong> {{ submission.payload.reason }}
-                                    </p>
-                                {% endif %}
-                                <pre style="white-space: pre-wrap; margin: 0;">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
-                            </td>
-                            <td>{{ submission.createdAt|date('Y-m-d H:i') }}</td>
-                            <td>
-                                <form method="post" action="{{ path('admin_submission_approve', {id: submission.id}) }}" style="display:inline;">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('approve' ~ submission.id) }}">
-                                    <button type="submit">Approve</button>
-                                </form>
-                                <form method="post" action="{{ path('admin_submission_reject', {id: submission.id}) }}" style="display:inline;">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ submission.id) }}">
-                                    <button type="submit">Reject</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </section>
+
+                            {% if submission.payload.image_path is defined and submission.payload.image_path %}
+                                <a class="admin-card__image" href="/{{ submission.payload.image_path }}" target="_blank" rel="noopener noreferrer" title="Bild in neuem Tab öffnen">
+                                    <img src="/{{ submission.payload.image_path }}" alt="">
+                                </a>
+                            {% endif %}
+
+                            {% if submission.payload.reason is defined and submission.payload.reason %}
+                                <p class="admin-card__note">
+                                    <strong>Hinweis:</strong> {{ submission.payload.reason }}
+                                </p>
+                            {% endif %}
+
+                            <section class="admin-card__section">
+                                <h2 class="admin-card__label">Payload</h2>
+                                <pre class="admin-card__payload">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                            </section>
+                        </div>
+
+                        <div class="admin-card__actions">
+                            <form method="post" action="{{ path('admin_submission_approve', {id: submission.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('approve' ~ submission.id) }}">
+                                <button type="submit" class="admin-card__btn admin-card__btn--approve">Approve</button>
+                            </form>
+                            <form method="post" action="{{ path('admin_submission_reject', {id: submission.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ submission.id) }}">
+                                <button type="submit" class="admin-card__btn admin-card__btn--reject">Reject</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
         {% endif %}
     </main>
 {% endblock %}
