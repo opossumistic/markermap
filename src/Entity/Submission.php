@@ -18,6 +18,10 @@ class Submission
     private ?int $id = null;
 
     #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Map $map;
+
+    #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Location $location = null;
 
@@ -40,13 +44,35 @@ class Submission
     #[ORM\Column(enumType: ReviewStatus::class)]
     private ReviewStatus $reviewStatus = ReviewStatus::Open;
 
-    public function __construct(SubmissionType $type, array $payload = [], ?Location $location = null, ?string $email = null)
-    {
+    public function __construct(
+        SubmissionType $type,
+        array $payload = [],
+        ?Location $location = null,
+        ?string $email = null,
+        ?Map $map = null,
+    ) {
         $this->type = $type;
         $this->payload = $payload;
         $this->location = $location;
         $this->email = $email;
+        $resolved = $map ?? $location?->getMap();
+        if ($resolved === null) {
+            throw new \InvalidArgumentException('Submission requires a Map (or a Location that belongs to one).');
+        }
+        $this->map = $resolved;
         $this->createdAt = new \DateTimeImmutable();
+    }
+
+    public function getMap(): Map
+    {
+        return $this->map;
+    }
+
+    public function setMap(Map $map): static
+    {
+        $this->map = $map;
+
+        return $this;
     }
 
     public function getId(): ?int

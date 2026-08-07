@@ -2,22 +2,18 @@
 
 namespace App\Service;
 
-use App\Geo\HamburgDistricts;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Nominatim geocoding (server-side: User-Agent + Hamburg bounding box).
+ * Nominatim geocoding (server-side User-Agent).
+ * Forward search is DE-scoped (product: entries in Germany); optional Map bounds tighten further.
  */
 final class ReverseGeocoder
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly string $userAgent,
-        private readonly float $minLat = 53.38,
-        private readonly float $maxLat = 53.75,
-        private readonly float $minLng = 9.7,
-        private readonly float $maxLng = 10.35,
     ) {
     }
 
@@ -26,10 +22,6 @@ final class ReverseGeocoder
      */
     public function reverse(float $lat, float $lng): ?array
     {
-        if (!$this->inBounds($lat, $lng)) {
-            return null;
-        }
-
         try {
             $response = $this->httpClient->request('GET', 'https://nominatim.openstreetmap.org/reverse', [
                 'query' => [
@@ -60,11 +52,13 @@ final class ReverseGeocoder
     }
 
     /**
-     * Forward geocode: free-text query → candidate points in Hamburg.
+     * Forward geocode (DE only). Optional bounds → Nominatim viewbox + bounded.
+     *
+     * @param array{minLat: float, maxLat: float, minLng: float, maxLng: float}|null $bounds
      *
      * @return list<array{lat: float, lng: float, street: ?string, postalCode: ?string, district: ?string, displayName: string}>
      */
-    public function search(string $query, int $limit = 5): array
+    public function search(string $query, ?array $bounds = null, int $limit = 5): array
     {
         $query = trim($query);
         if ($query === '' || mb_strlen($query) < 3) {
@@ -72,19 +66,29 @@ final class ReverseGeocoder
         }
 
         $limit = max(1, min(8, $limit));
+        $params = [
+            'q' => $query,
+            'format' => 'json',
+            'addressdetails' => 1,
+            'limit' => $limit,
+            'countrycodes' => 'de',
+        ];
+
+        if ($bounds !== null) {
+            // left, top, right, bottom
+            $params['viewbox'] = sprintf(
+                '%F,%F,%F,%F',
+                $bounds['minLng'],
+                $bounds['maxLat'],
+                $bounds['maxLng'],
+                $bounds['minLat'],
+            );
+            $params['bounded'] = 1;
+        }
 
         try {
             $response = $this->httpClient->request('GET', 'https://nominatim.openstreetmap.org/search', [
-                'query' => [
-                    'q' => $query,
-                    'format' => 'json',
-                    'addressdetails' => 1,
-                    'limit' => $limit,
-                    'countrycodes' => 'de',
-                    // left, top, right, bottom
-                    'viewbox' => sprintf('%F,%F,%F,%F', $this->minLng, $this->maxLat, $this->maxLng, $this->minLat),
-                    'bounded' => 1,
-                ],
+                'query' => $params,
                 'headers' => $this->headers(),
                 'timeout' => 8,
             ]);
@@ -109,7 +113,10 @@ final class ReverseGeocoder
             }
             $lat = isset($row['lat']) ? (float) $row['lat'] : null;
             $lng = isset($row['lon']) ? (float) $row['lon'] : null;
-            if ($lat === null || $lng === null || !$this->inBounds($lat, $lng)) {
+            if ($lat === null || $lng === null) {
+                continue;
+            }
+            if ($bounds !== null && !$this->inBounds($lat, $lng, $bounds)) {
                 continue;
             }
 
@@ -172,15 +179,17 @@ final class ReverseGeocoder
     }
 
     /**
+     * First non-empty Nominatim locality label (no city whitelist).
+     *
      * @param array<string, mixed> $address
      */
     private function resolveDistrict(array $address): ?string
     {
         foreach (['suburb', 'city_district', 'neighbourhood', 'quarter', 'city_block'] as $key) {
             if (!empty($address[$key]) && \is_string($address[$key])) {
-                $resolved = HamburgDistricts::resolve($address[$key]);
-                if ($resolved !== null) {
-                    return $resolved;
+                $value = trim($address[$key]);
+                if ($value !== '') {
+                    return $value;
                 }
             }
         }
@@ -188,11 +197,14 @@ final class ReverseGeocoder
         return null;
     }
 
-    private function inBounds(float $lat, float $lng): bool
+    /**
+     * @param array{minLat: float, maxLat: float, minLng: float, maxLng: float} $bounds
+     */
+    private function inBounds(float $lat, float $lng, array $bounds): bool
     {
-        return $lat >= $this->minLat
-            && $lat <= $this->maxLat
-            && $lng >= $this->minLng
-            && $lng <= $this->maxLng;
+        return $lat >= $bounds['minLat']
+            && $lat <= $bounds['maxLat']
+            && $lng >= $bounds['minLng']
+            && $lng <= $bounds['maxLng'];
     }
 }

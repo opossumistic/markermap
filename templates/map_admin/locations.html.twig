@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Locations · {{ map.name }}{% endblock %}
+
+{% block body %}
+    <main class="admin admin--wide">
+        <p class="admin__role">Owner · {{ map.name }}</p>
+        <p class="admin__nav">
+            <a href="{{ path('map_admin_inbox', { mapSlug: map.slug }) }}">Inbox</a>
+            · <a href="{{ path('map_show', { mapSlug: map.slug }) }}">Karte</a>
+            ·
+            <form action="{{ path('map_admin_logout', { mapSlug: map.slug }) }}" method="post" class="admin__logout" data-turbo="false">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                <button type="submit">Logout</button>
+            </form>
+        </p>
+        <h1>Locations</h1>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if locations is empty %}
+            <p>Keine Locations.</p>
+        {% else %}
+            <ul class="admin-list">
+                {% for location in locations %}
+                    <li class="admin-card">
+                        <header class="admin-card__head">
+                            <span class="admin-card__id">#{{ location.id }}</span>
+                            <span class="admin-card__status">{{ location.status.value }}</span>
+                        </header>
+                        <p class="admin-card__text">{{ location.displayLabel }}</p>
+                        {% if location.status.value != 'removed' %}
+                            <form method="post" action="{{ path('map_admin_location_remove', { mapSlug: map.slug, id: location.id }) }}" onsubmit="return confirm('Location #{{ location.id }} entfernen?');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ location.id) }}">
+                                <button type="submit">Entfernen</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </main>
+{% endblock %}

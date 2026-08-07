@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Location;
+use App\Entity\Map;
 use App\Entity\Submission;
 use App\Enum\LocationStatus;
 use App\Enum\SubmissionType;
@@ -22,7 +23,7 @@ final class LocationWorkflow
     /**
      * @param array<string, mixed> $payload
      */
-    public function submitNew(array $payload, ?string $email = null): Submission
+    public function submitNew(Map $map, array $payload, ?string $email = null): Submission
     {
         $payload = $this->enrichPayloadFromGeocode($payload);
 
@@ -31,10 +32,10 @@ final class LocationWorkflow
         $locationPayload = $payload;
         unset($locationPayload['image_path']);
 
-        $location = new Location();
+        $location = new Location($map);
         $location->applyPayload($locationPayload);
 
-        $submission = new Submission(SubmissionType::New, $payload, $location, $email);
+        $submission = new Submission(SubmissionType::New, $payload, $location, $email, $map);
         $this->entityManager->persist($location);
         $this->entityManager->persist($submission);
         $this->entityManager->flush();
@@ -168,7 +169,7 @@ final class LocationWorkflow
     {
         $location = $submission->getLocation();
         if ($location === null) {
-            $location = Location::fromNewPayload($submission->getPayload());
+            $location = Location::fromNewPayload($submission->getPayload(), $submission->getMap());
             $this->entityManager->persist($location);
             $submission->setLocation($location);
 

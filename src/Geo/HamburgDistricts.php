@@ -5,6 +5,9 @@ namespace App\Geo;
 /**
  * Official Hamburg Stadtteile (104, since 2011), grouped by Bezirk.
  *
+ * Tenant-specific reference data (Tauschboxen). Geocoding uses raw Nominatim
+ * labels globally — do not wire this whitelist into ReverseGeocoder.
+ *
  * @see https://de.wikipedia.org/wiki/Liste_der_Bezirke_und_Stadtteile_Hamburgs
  */
 final class HamburgDistricts

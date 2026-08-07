@@ -2,10 +2,12 @@
 
 namespace App\Controller;
 
+use App\Entity\Map;
 use App\Form\Data\LocationCorrectionData;
 use App\Form\Data\NewLocationSubmissionData;
 use App\Form\LocationCorrectionType;
 use App\Form\NewLocationSubmissionType;
+use App\Map\MapSlug;
 use App\Service\ClientRateLimit;
 use App\Service\LocationImageStorage;
 use App\Service\LocationWorkflow;
@@ -24,8 +26,14 @@ final class SubmitLocationController extends AbstractController
     ) {
     }
 
-    #[Route('/vorschlagen', name: 'location_submit', methods: ['GET', 'POST'])]
+    #[Route(
+        '/maps/{mapSlug}/vorschlagen',
+        name: 'location_submit',
+        methods: ['GET', 'POST'],
+        requirements: ['mapSlug' => MapSlug::PATTERN],
+    )]
     public function __invoke(
+        Map $map,
         Request $request,
         LocationWorkflow $workflow,
         LocationImageStorage $images,
@@ -33,24 +41,31 @@ final class SubmitLocationController extends AbstractController
         ClientRateLimit $rateLimit,
     ): Response {
         if ($request->isMethod('GET')) {
-            return $this->redirectToRoute('home', ['add' => 1]);
+            return $this->redirectToRoute('map_show', ['mapSlug' => $map->getSlug(), 'add' => 1]);
         }
 
+        $formOpts = ['categories_enabled' => $map->usesCategories()];
         $data = new NewLocationSubmissionData();
-        $form = $this->createForm(NewLocationSubmissionType::class, $data);
+        $form = $this->createForm(NewLocationSubmissionType::class, $data, $formOpts);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             if (!$rateLimit->tryConsume($publicWriteLimiter, $request)) {
                 $this->addFlash('error', 'Zu viele Anfragen — bitte in ein paar Minuten erneut versuchen.');
 
-                return $this->redirectToRoute('home');
+                return $this->redirectToRoute('map_show', ['mapSlug' => $map->getSlug()]);
             }
 
             if ($data->website !== null && trim($data->website) !== '') {
                 $this->addFlash('success', 'Danke! Dein Vorschlag ist als ausgegrauter Punkt auf der Karte und wird geprüft.');
 
-                return $this->redirectToRoute('home');
+                return $this->redirectToRoute('map_show', ['mapSlug' => $map->getSlug()]);
+            }
+
+            if ($map->hasBounds() && !$map->containsCoordinates((float) $data->lat, (float) $data->lng)) {
+                $this->addFlash('error', 'Standort liegt außerhalb des erlaubten Kartenbereichs.');
+
+                return $this->redirectToRoute('map_show', ['mapSlug' => $map->getSlug(), 'add' => 1]);
             }
 
             $payload = $data->toPayload();
@@ -58,12 +73,15 @@ final class SubmitLocationController extends AbstractController
                 $payload['image_path'] = $images->store($data->image);
             }
 
-            $submission = $workflow->submitNew($payload, $data->email);
+            $submission = $workflow->submitNew($map, $payload, $data->email);
             $this->addFlash('success', 'Danke! Dein Vorschlag ist als ausgegrauter Punkt auf der Karte und wird geprüft.');
 
             $locationId = $submission->getLocation()?->getId();
 
-            return $this->redirectToRoute('home', $locationId ? ['focus' => $locationId] : []);
+            return $this->redirectToRoute('map_show', array_filter([
+                'mapSlug' => $map->getSlug(),
+                'focus' => $locationId,
+            ]));
         }
 
         if ($form->isSubmitted()) {
@@ -71,9 +89,10 @@ final class SubmitLocationController extends AbstractController
         }
 
         return $this->render('home/index.html.twig', [
+            'map' => $map,
             'mapStyleUrl' => $this->mapStyleUrl,
             'form' => $form,
-            'correctionForm' => $this->createForm(LocationCorrectionType::class, new LocationCorrectionData()),
+            'correctionForm' => $this->createForm(LocationCorrectionType::class, new LocationCorrectionData(), $formOpts),
             'openAdd' => true,
             'focusId' => null,
         ]);

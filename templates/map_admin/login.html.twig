@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Owner-Login · {{ map.name }}{% endblock %}
+
+{% block body %}
+    <main class="admin">
+        <p class="admin__role">Owner · {{ map.name }}</p>
+        <h1>Map verwalten</h1>
+        <p>Login per Magic Link an die Owner-E-Mail dieser Map (ca. 20 Minuten gültig). Das ist nicht der Plattform-Admin.</p>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        <form method="post" class="admin__form" data-turbo="false">
+            <input type="hidden" name="_token" value="{{ csrf_token('map_admin_login' ~ map.id) }}">
+            <label class="admin__field">
+                Owner-E-Mail
+                <input type="email" name="email" required autocomplete="email">
+            </label>
+            <button type="submit" class="admin__submit">Login-Link senden</button>
+        </form>
+
+        <p class="admin__nav">
+            <a href="{{ path('map_show', { mapSlug: map.slug }) }}">Zur Karte</a>
+            · <a href="{{ path('platform_home') }}">Alle Maps</a>
+        </p>
+    </main>
+{% endblock %}

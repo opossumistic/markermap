@@ -18,6 +18,10 @@ class Location
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Map $map;
+
     #[ORM\Column(length: 180, nullable: true)]
     private ?string $title = null;
 
@@ -65,11 +69,24 @@ class Location
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct()
+    public function __construct(Map $map)
     {
+        $this->map = $map;
         $now = new \DateTimeImmutable();
         $this->createdAt = $now;
         $this->updatedAt = $now;
+    }
+
+    public function getMap(): Map
+    {
+        return $this->map;
+    }
+
+    public function setMap(Map $map): static
+    {
+        $this->map = $map;
+
+        return $this;
     }
 
     #[ORM\PreUpdate]
@@ -110,7 +127,7 @@ class Location
             $this->getCategories(),
         );
         $parts = array_filter([
-            $categoryLabels !== [] ? implode(', ', $categoryLabels) : 'Tauschbox',
+            $categoryLabels !== [] ? implode(', ', $categoryLabels) : 'Ort',
             $this->district,
         ]);
 
@@ -340,9 +357,9 @@ class Location
     /**
      * @param array<string, mixed> $payload
      */
-    public static function fromNewPayload(array $payload): self
+    public static function fromNewPayload(array $payload, Map $map): self
     {
-        $location = new self();
+        $location = new self($map);
         $location->applyPayload($payload);
         $location->activate();
 

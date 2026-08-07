@@ -26,15 +26,14 @@ final class NewLocationSubmissionData
     public ?string $description = null;
 
     /** @var list<LocationCategory> */
-    #[Assert\Count(min: 1, minMessage: 'Bitte mindestens eine Kategorie wählen.')]
     public array $categories = [];
 
     #[Assert\NotNull]
-    #[Assert\Range(min: 53.38, max: 53.75, notInRangeMessage: 'Koordinaten müssen in Hamburg liegen.')]
+    #[Assert\Range(min: -90, max: 90, notInRangeMessage: 'Ungültige Latitude.')]
     public ?float $lat = null;
 
     #[Assert\NotNull]
-    #[Assert\Range(min: 9.70, max: 10.35, notInRangeMessage: 'Koordinaten müssen in Hamburg liegen.')]
+    #[Assert\Range(min: -180, max: 180, notInRangeMessage: 'Ungültige Longitude.')]
     public ?float $lng = null;
 
     #[Assert\Email]

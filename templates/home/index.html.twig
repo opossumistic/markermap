@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Markermap{% endblock %}
+{% block title %}{{ map.name }} · Markermap{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -12,13 +12,23 @@
         class="map-shell"
         data-controller="map-shell"
         data-map-shell-style-url-value="{{ mapStyleUrl }}"
-        data-map-shell-locations-url-value="{{ path('api_locations_geojson') }}"
-        data-map-shell-reverse-url-value="{{ path('api_reverse_geocode') }}"
-        data-map-shell-geocode-url-value="{{ path('api_geocode') }}"
-        data-map-shell-report-url-template-value="/melden/__ID__"
+        data-map-shell-locations-url-value="{{ path('api_locations_geojson', { mapSlug: map.slug }) }}"
+        data-map-shell-reverse-url-value="{{ path('api_reverse_geocode', { mapSlug: map.slug }) }}"
+        data-map-shell-geocode-url-value="{{ path('api_geocode', { mapSlug: map.slug }) }}"
+        data-map-shell-report-url-template-value="/maps/{{ map.slug }}/melden/__ID__"
         data-map-shell-report-token-value="{{ csrf_token('report_gone') }}"
         data-map-shell-open-add-value="{{ openAdd ? 'true' : 'false' }}"
         data-map-shell-focus-id-value="{{ focusId|default(0) }}"
+        data-map-shell-center-lat-value="{{ map.centerLat }}"
+        data-map-shell-center-lng-value="{{ map.centerLng }}"
+        data-map-shell-zoom-value="{{ map.defaultZoom }}"
+        data-map-shell-has-bounds-value="{{ map.hasBounds ? 'true' : 'false' }}"
+        {% if map.hasBounds %}
+            data-map-shell-min-lat-value="{{ map.minLat }}"
+            data-map-shell-max-lat-value="{{ map.maxLat }}"
+            data-map-shell-min-lng-value="{{ map.minLng }}"
+            data-map-shell-max-lng-value="{{ map.maxLng }}"
+        {% endif %}
     >
         {% for label, messages in app.flashes %}
             {% for message in messages %}
@@ -38,7 +48,7 @@
 
         <div class="map-chrome">
             <div class="map-toolbar">
-                <a class="map-brand" href="{{ path('home') }}" aria-label="Markermap Startseite">Markermap</a>
+                <a class="map-brand" href="{{ path('map_show', { mapSlug: map.slug }) }}" aria-label="{{ map.name }}">{{ map.name }}</a>
                 <form class="map-search" data-action="submit->map-shell#searchAddress" role="search">
                     <input
                         type="search"
@@ -47,7 +57,7 @@
                         autocomplete="off"
                         enterkeyhint="search"
                         data-map-shell-target="searchQuery"
-                        aria-label="Adresse in Hamburg suchen"
+                        aria-label="Adresse suchen"
                     >
                     <button
                         type="button"
@@ -70,18 +80,25 @@
                     type="button"
                     class="map-btn map-btn--icon map-toolbar__add"
                     data-action="map-shell#startAdd"
-                    aria-label="Box eintragen"
-                    title="Box eintragen — oder auf die Karte tippen"
+                    aria-label="Ort eintragen"
+                    title="Ort eintragen — oder auf die Karte tippen"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
                         <path fill="currentColor" d="M12 4a1 1 0 0 1 1 1v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5a1 1 0 0 1 1-1"/>
                     </svg>
-                    <span class="map-toolbar__add-label">Box eintragen</span>
+                    <span class="map-toolbar__add-label">Ort eintragen</span>
                 </button>
             </div>
         </div>
 
-        <nav class="map-legal" aria-label="Rechtliches">
+        <nav class="map-legal" aria-label="Navigation und Rechtliches">
+            {% if is_map_owner(map) %}
+                <span class="map-legal__role" title="Du bist als Owner dieser Map angemeldet">Owner</span>
+                <a href="{{ path('map_admin_inbox', { mapSlug: map.slug }) }}">Moderation</a>
+            {% else %}
+                <a href="{{ path('map_admin_login', { mapSlug: map.slug }) }}">Map verwalten</a>
+            {% endif %}
+            <a href="{{ path('platform_home') }}">Alle Maps</a>
             <a href="{{ path('legal_impressum') }}">Impressum</a>
             <a href="{{ path('legal_datenschutz') }}">Datenschutz</a>
         </nav>
@@ -90,7 +107,7 @@
             class="map-canvas"
             data-map-shell-target="canvas"
             role="region"
-            aria-label="Karte der Tauschboxen in Hamburg"
+            aria-label="Karte: {{ map.name }}"
         ></div>
 
         <aside class="map-sheet" data-map-shell-target="sheet" hidden>
@@ -104,17 +121,19 @@
             <div class="map-sheet__body map-sheet__add" data-map-shell-target="addPanel" hidden>
                 <p class="picker-status" data-map-shell-target="pickerStatus" role="status">Klicke auf die Karte oder suche eine Adresse.</p>
 
-                {{ form_start(form, { action: path('location_submit'), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
+                {{ form_start(form, { action: path('location_submit', { mapSlug: map.slug }), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
                     {{ form_errors(form) }}
                     {{ form_row(form.title) }}
                     {{ form_row(form.street) }}
                     {{ form_row(form.postalCode) }}
-                    {{ form_row(form.categories) }}
+                    {% if form.categories is defined %}
+                        {{ form_row(form.categories) }}
+                    {% endif %}
                     {{ form_row(form.description) }}
                     {{ form_row(form.image) }}
 
                     {% if form.lat.vars.errors|length or form.lng.vars.errors|length %}
-                        <p class="picker-status is-error">Bitte einen Standort innerhalb Hamburgs auf der Karte setzen.</p>
+                        <p class="picker-status is-error">Bitte einen gültigen Standort auf der Karte setzen.</p>
                     {% endif %}
 
                     <div class="coord-field">{{ form_widget(form.lat) }}</div>
@@ -129,12 +148,14 @@
             <div class="map-sheet__body map-sheet__add" data-map-shell-target="correctPanel" hidden>
                 <p class="picker-status">Infos vorausgefüllt — Standort bleibt. Andere Position = neuer Eintrag. Sichtbar nach Freigabe.</p>
 
-                {{ form_start(correctionForm, { action: path('location_correct'), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
+                {{ form_start(correctionForm, { action: path('location_correct', { mapSlug: map.slug }), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
                     {{ form_errors(correctionForm) }}
                     {{ form_row(correctionForm.locationId) }}
                     {{ form_row(correctionForm.title) }}
                     {{ form_row(correctionForm.description) }}
-                    {{ form_row(correctionForm.categories) }}
+                    {% if correctionForm.categories is defined %}
+                        {{ form_row(correctionForm.categories) }}
+                    {% endif %}
                     {{ form_row(correctionForm.image) }}
                     {{ form_row(correctionForm.reason) }}
                     {{ form_row(correctionForm.email) }}

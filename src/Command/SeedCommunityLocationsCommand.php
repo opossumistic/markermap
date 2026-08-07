@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Entity\Location;
 use App\Enum\LocationCategory;
 use App\Repository\LocationRepository;
+use App\Repository\MapRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -23,6 +24,7 @@ final class SeedCommunityLocationsCommand extends Command
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly LocationRepository $locationRepository,
+        private readonly MapRepository $mapRepository,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
@@ -65,6 +67,7 @@ final class SeedCommunityLocationsCommand extends Command
             $io->note('Purged existing locations.');
         }
 
+        $map = $this->mapRepository->getDefaultMap();
         $created = 0;
         $updated = 0;
         $skipped = 0;
@@ -89,7 +92,7 @@ final class SeedCommunityLocationsCommand extends Command
             $location = $this->findExisting($title, $street, $lat, $lng);
             $isNew = $location === null;
             if ($isNew) {
-                $location = new Location();
+                $location = new Location($map);
             }
 
             $description = isset($row['description']) && $row['description'] !== null && $row['description'] !== ''
@@ -108,7 +111,7 @@ final class SeedCommunityLocationsCommand extends Command
                 ->setLat($lat)
                 ->setLng($lng)
                 ->setDescription($description)
-                ->setCategory($category);
+                ->setCategories([$category]);
 
             $status = (string) ($row['status'] ?? 'active');
             if ($status === 'removed') {

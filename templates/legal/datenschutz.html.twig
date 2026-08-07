@@ -8,7 +8,7 @@
 
 {% block body %}
 <main class="legal">
-    <p><a href="{{ path('home') }}">← Zur Karte</a></p>
+    <p><a href="{{ path('platform_home') }}">← Zur Karte</a></p>
     <h1>Datenschutzerklärung</h1>
     <p class="legal__note">Entwurf für Soft-Launch — vor öffentlichem Betrieb rechtlich prüfen und an finale Domain, Hosting und Kontakt anpassen.</p>
 
@@ -22,9 +22,9 @@
 
     <h2>2. Überblick: Was macht Markermap?</h2>
     <p>
-        Markermap zeigt öffentlich Tauschboxen in Hamburg auf einer Karte.
+        Markermap ist eine Plattform für öffentliche Community-Karten (Themen mit Marker-Sammlungen).
         Nutzerinnen und Nutzer können Standorte vorschlagen, Änderungen melden oder als „nicht mehr vorhanden“ kennzeichnen.
-        Vorschläge werden moderiert, bevor Beschreibung, Kategorien und Fotos öffentlich sichtbar werden.
+        Vorschläge werden moderiert, bevor Beschreibung, optionale Kategorien und Fotos öffentlich sichtbar werden.
         Bis zur Freigabe erscheint höchstens ein ausgegrauter Pin mit Adresse aus der Geocodierung.
     </p>
 
@@ -60,9 +60,9 @@
     <h3>3.4 Standortvorschläge und Meldungen</h3>
     <p>Wenn Sie einen Eintrag vorschlagen, eine Änderung melden oder einen Standort als nicht mehr vorhanden kennzeichnen, verarbeiten wir insbesondere:</p>
     <ul>
-        <li>Koordinaten (Latitude/Longitude) innerhalb Hamburgs</li>
-        <li>Adresse bzw. aus Geocodierung abgeleitete Adressbestandteile (Straße, PLZ, Stadtteil)</li>
-        <li>optional: Bezeichnung, Beschreibung, Kategorien</li>
+        <li>Koordinaten (Latitude/Longitude); sofern die jeweilige Karte geografische Grenzen definiert, innerhalb dieses Bereichs</li>
+        <li>Adresse bzw. aus Geocodierung abgeleitete Adressbestandteile (Straße, PLZ, Ortsteil/Stadtteil)</li>
+        <li>optional: Bezeichnung, Beschreibung, Kategorien (falls die Karte Kategorien nutzt)</li>
         <li>optional: Foto (JPEG/PNG/WebP, begrenzt in Dateigröße)</li>
         <li>optional: E-Mail-Adresse für Rückfragen der Moderation und — falls angegeben — eine kurze Info-Mail bei Freigabe Ihres Vorschlags bzw. Ihrer Änderung (keine Mail bei Ablehnung)</li>
         <li>technische Metaangaben der Einreichung (Zeitpunkt, Moderationsstatus)</li>
@@ -76,8 +76,9 @@
 
     <h3>3.5 Admin-Zugang</h3>
     <p>
-        Der Moderationsbereich ist durch ein Formular-Login (Session) geschützt.
-        Zugangsdaten liegen nur beim Betreiber; Anmeldeversuche können serverseitig begrenzt und protokolliert werden.
+        Der Moderationsbereich einer Karte ist durch Magic-Link-Login (Session) für die Karten-Inhaberin bzw. den Karten-Inhaber geschützt.
+        Zusätzlich gibt es einen plattformweiten Super-Admin-Zugang.
+        Anmeldeversuche können serverseitig begrenzt und protokolliert werden.
     </p>
 
     <h2>4. Speicherdauer</h2>
@@ -110,7 +111,7 @@
             <strong>Nominatim / OpenStreetMap (Geocoding):</strong>
             Adresssuche und Reverse-Geocoding erfolgen serverseitig über unseren Proxy an Nominatim.
             Übermittelt werden Suchbegriff bzw. Koordinaten sowie ein identifizierbarer User-Agent.
-            Zweck: Plausibilisierung von Standorten in Hamburg. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
+            Zweck: Plausibilisierung von Standorten (ggf. begrenzt auf den konfigurierten Kartenausschnitt). Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
             Nutzung unterliegt den Nutzungsbedingungen von Nominatim/OSM.
         </li>
         <li>
@@ -152,7 +153,7 @@
     <h2>9. Änderungen</h2>
     <p>Wir passen diese Erklärung an, wenn sich Funktionen, Rechtslage oder eingesetzte Dienste ändern. Es gilt die jeweils auf dieser Seite veröffentlichte Fassung.</p>
     <p class="legal__nav">
-        <a href="{{ path('home') }}">Karte</a>
+        <a href="{{ path('platform_home') }}">Karte</a>
         ·
         <a href="{{ path('legal_impressum') }}">Impressum</a>
         ·

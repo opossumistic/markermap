@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Location;
+use App\Entity\Map;
 use App\Enum\LocationStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -18,10 +19,12 @@ class LocationRepository extends ServiceEntityRepository
     }
 
     /** @return list<Location> */
-    public function findVisibleOnMap(): array
+    public function findVisibleOnMap(Map $map): array
     {
         return $this->createQueryBuilder('l')
+            ->andWhere('l.map = :map')
             ->andWhere('l.status IN (:statuses)')
+            ->setParameter('map', $map)
             ->setParameter('statuses', [LocationStatus::Pending, LocationStatus::Active, LocationStatus::Disputed])
             ->orderBy('l.title', 'ASC')
             ->getQuery()
@@ -33,13 +36,30 @@ class LocationRepository extends ServiceEntityRepository
      *
      * @return list<Location>
      */
-    public function findModeratable(): array
+    public function findModeratable(?Map $map = null): array
     {
-        return $this->createQueryBuilder('l')
+        $qb = $this->createQueryBuilder('l')
             ->andWhere('l.status IN (:statuses)')
             ->setParameter('statuses', [LocationStatus::Pending, LocationStatus::Active, LocationStatus::Disputed])
-            ->orderBy('l.id', 'DESC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('l.id', 'DESC');
+
+        if ($map !== null) {
+            $qb->andWhere('l.map = :map')->setParameter('map', $map);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function findVisibleOnMapById(Map $map, int $id): ?Location
+    {
+        $location = $this->find($id);
+        if ($location === null
+            || $location->getMap()->getId() !== $map->getId()
+            || !$location->getStatus()->isVisibleOnMap()
+        ) {
+            return null;
+        }
+
+        return $location;
     }
 }

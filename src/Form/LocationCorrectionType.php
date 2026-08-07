@@ -41,8 +41,10 @@ final class LocationCorrectionType extends AbstractType
                     'rows' => 4,
                     'maxlength' => LocationFieldLimits::DESCRIPTION_MAX,
                 ],
-            ])
-            ->add('categories', EnumType::class, [
+            ]);
+
+        if ($options['categories_enabled']) {
+            $builder->add('categories', EnumType::class, [
                 'class' => LocationCategory::class,
                 'label' => 'Kategorien',
                 'multiple' => true,
@@ -50,7 +52,10 @@ final class LocationCorrectionType extends AbstractType
                 'required' => false,
                 'empty_data' => [],
                 'choice_label' => static fn (LocationCategory $c) => $c->label(),
-            ])
+            ]);
+        }
+
+        $builder
             ->add('image', FileType::class, [
                 'label' => 'Neues Foto (optional)',
                 'required' => false,
@@ -64,7 +69,7 @@ final class LocationCorrectionType extends AbstractType
                 'attr' => [
                     'rows' => 2,
                     'maxlength' => LocationFieldLimits::REASON_MAX,
-                    'placeholder' => 'z. B. Titel war veraltet, Box umbenannt…',
+                    'placeholder' => 'z. B. Titel war veraltet…',
                 ],
             ])
             ->add('email', EmailType::class, [
@@ -87,6 +92,8 @@ final class LocationCorrectionType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => LocationCorrectionData::class,
+            'categories_enabled' => false,
         ]);
+        $resolver->setAllowedTypes('categories_enabled', 'bool');
     }
 }

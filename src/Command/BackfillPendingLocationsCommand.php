@@ -40,7 +40,7 @@ final class BackfillPendingLocationsCommand extends Command
 
         $count = 0;
         foreach ($open as $submission) {
-            $location = new Location();
+            $location = new Location($submission->getMap());
             $location->applyPayload($submission->getPayload());
             $submission->setLocation($location);
             $this->entityManager->persist($location);
@@ -48,7 +48,7 @@ final class BackfillPendingLocationsCommand extends Command
         }
 
         $this->entityManager->flush();
-        $io->success(sprintf('Linked %d open submission(s) to pending locations.', $count));
+        $io->success(sprintf('Backfilled %d pending location(s).', $count));
 
         return Command::SUCCESS;
     }

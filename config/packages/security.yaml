@@ -5,6 +5,8 @@ security:
     providers:
         admin_env:
             id: App\Security\EnvAdminUserProvider
+        app_users:
+            id: App\Security\UserProvider
 
     firewalls:
         dev:
@@ -25,13 +27,28 @@ security:
                 path: admin_logout
                 target: admin_login
                 enable_csrf: true
+        map_admin:
+            pattern: ^/maps/[^/]+/admin
+            lazy: true
+            provider: app_users
+            context: map_owner
+            entry_point: App\Security\MapAdminEntryPoint
+            custom_authenticators:
+                - App\Security\MapOwnerAuthenticator
+            logout:
+                path: map_admin_logout
+                target: platform_home
+                enable_csrf: true
         main:
             lazy: true
-            security: false
+            provider: app_users
+            context: map_owner
 
     access_control:
         - { path: ^/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/maps/[^/]+/admin/login, roles: PUBLIC_ACCESS }
+        - { path: ^/maps/[^/]+/admin, roles: ROLE_MAP_OWNER }
 
 when@test:
     security:

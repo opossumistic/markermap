@@ -1,19 +1,21 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin Locations{% endblock %}
+{% block title %}Plattform · Locations{% endblock %}
 
 {% block body %}
     <main class="admin admin--wide">
+        <p class="admin__role">Plattform · alle Maps</p>
         <p class="admin__nav">
             <a href="{{ path('admin_inbox') }}">← Inbox</a>
-            · <a href="{{ path('home') }}">Karte</a>
+            · <a href="{{ path('admin_maps') }}">Maps</a>
+            · <a href="{{ path('platform_home') }}">Übersicht</a>
             ·
             <form action="{{ path('admin_logout') }}" method="post" class="admin__logout" data-turbo="false">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
                 <button type="submit">Logout</button>
             </form>
         </p>
-        <h1>Locations auf der Karte</h1>
+        <h1>Locations</h1>
         <p>Soft-Remove blendet den Pin aus (Status <code>removed</code>). Offene Submissions dazu werden geschlossen.</p>
 
         {% for label, messages in app.flashes %}

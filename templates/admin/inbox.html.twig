@@ -1,12 +1,14 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin Inbox{% endblock %}
+{% block title %}Plattform · Inbox{% endblock %}
 
 {% block body %}
     <main class="admin admin--wide">
+        <p class="admin__role">Plattform · alle Maps</p>
         <p class="admin__nav">
             <a href="{{ path('admin_locations') }}">Locations</a>
-            · <a href="{{ path('home') }}">Karte</a>
+            · <a href="{{ path('admin_maps') }}">Maps</a>
+            · <a href="{{ path('platform_home') }}">Übersicht</a>
             ·
             <form action="{{ path('admin_logout') }}" method="post" class="admin__logout" data-turbo="false">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">

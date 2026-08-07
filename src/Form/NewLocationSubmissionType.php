@@ -14,6 +14,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints as Assert;
 
 final class NewLocationSubmissionType extends AbstractType
 {
@@ -21,9 +22,11 @@ final class NewLocationSubmissionType extends AbstractType
     {
         $builder
             ->add('title', TextType::class, [
-                'label' => 'Bezeichnung (optional)',
+                'label' => 'Bezeichnung'.($options['categories_enabled'] ? ' (optional)' : ''),
                 'required' => false,
-                'help' => 'Falls leer, zeigen wir Kategorien (und ggf. Stadtteil aus der Karte).',
+                'help' => $options['categories_enabled']
+                    ? 'Falls leer, zeigen wir Kategorien (und ggf. Stadtteil aus der Karte).'
+                    : 'Kurzname für den Pin auf der Karte.',
             ])
             ->add('street', TextType::class, [
                 'label' => 'Straße und Hausnummer',
@@ -43,14 +46,22 @@ final class NewLocationSubmissionType extends AbstractType
                     'autocomplete' => 'postal-code',
                     'data-map-shell-target' => 'postalCode',
                 ],
-            ])
-            ->add('categories', EnumType::class, [
+            ]);
+
+        if ($options['categories_enabled']) {
+            $builder->add('categories', EnumType::class, [
                 'class' => LocationCategory::class,
                 'label' => 'Kategorien',
                 'multiple' => true,
                 'expanded' => true,
                 'choice_label' => static fn (LocationCategory $c) => $c->label(),
-            ])
+                'constraints' => [
+                    new Assert\Count(min: 1, minMessage: 'Bitte mindestens eine Kategorie wählen.'),
+                ],
+            ]);
+        }
+
+        $builder
             ->add('description', TextareaType::class, [
                 'label' => 'Kurzbeschreibung',
                 'required' => false,
@@ -106,6 +117,8 @@ final class NewLocationSubmissionType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => NewLocationSubmissionData::class,
+            'categories_enabled' => false,
         ]);
+        $resolver->setAllowedTypes('categories_enabled', 'bool');
     }
 }

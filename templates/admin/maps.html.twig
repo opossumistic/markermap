@@ -1,0 +1,63 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Plattform · Maps{% endblock %}
+
+{% block body %}
+    <main class="admin admin--wide">
+        <p class="admin__role">Plattform · alle Maps</p>
+        <p class="admin__nav">
+            <a href="{{ path('admin_inbox') }}">Inbox</a>
+            · <a href="{{ path('admin_locations') }}">Locations</a>
+            · <a href="{{ path('platform_home') }}">Übersicht</a>
+            ·
+            <form action="{{ path('admin_logout') }}" method="post" class="admin__logout" data-turbo="false">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                <button type="submit">Logout</button>
+            </form>
+        </p>
+        <h1>Alle Maps</h1>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if maps is empty %}
+            <p>Keine Maps.</p>
+        {% else %}
+            <ul class="admin-list">
+                {% for map in maps %}
+                    <li class="admin-card">
+                        <header class="admin-card__head">
+                            <span class="admin-card__id">#{{ map.id }}</span>
+                            <strong>{{ map.name }}</strong>
+                            <span class="admin-card__status">{{ map.status.value }}</span>
+                        </header>
+                        <p class="admin-card__text">
+                            <code>/maps/{{ map.slug }}</code>
+                            {% if map.owner %} · Owner: {{ map.owner.email }}{% endif %}
+                            {% if map.notifyEmail %} · Notify: {{ map.notifyEmail }}{% endif %}
+                        </p>
+                        <div class="admin-card__actions">
+                            {% if map.status.value == 'active' %}
+                                <a class="admin-card__btn" href="{{ path('map_show', { mapSlug: map.slug }) }}">Öffnen</a>
+                                <form method="post" action="{{ path('admin_map_disable', { id: map.id }) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('disable_map' ~ map.id) }}">
+                                    <button type="submit" class="admin-card__btn admin-card__btn--reject">Disable</button>
+                                </form>
+                            {% elseif map.status.value == 'disabled' %}
+                                <form method="post" action="{{ path('admin_map_enable', { id: map.id }) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('enable_map' ~ map.id) }}">
+                                    <button type="submit" class="admin-card__btn admin-card__btn--approve">Enable</button>
+                                </form>
+                            {% else %}
+                                <span class="admin-card__meta">Wartet auf Owner-Verify</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </main>
+{% endblock %}

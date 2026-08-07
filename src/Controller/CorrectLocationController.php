@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Map;
 use App\Form\Data\LocationCorrectionData;
 use App\Form\LocationCorrectionType;
+use App\Map\MapSlug;
 use App\Repository\LocationRepository;
 use App\Service\ClientRateLimit;
 use App\Service\LocationImageStorage;
@@ -16,8 +18,14 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class CorrectLocationController extends AbstractController
 {
-    #[Route('/ergaenzen', name: 'location_correct', methods: ['POST'])]
+    #[Route(
+        '/maps/{mapSlug}/ergaenzen',
+        name: 'location_correct',
+        methods: ['POST'],
+        requirements: ['mapSlug' => MapSlug::PATTERN],
+    )]
     public function __invoke(
+        Map $map,
         Request $request,
         LocationRepository $locations,
         LocationWorkflow $workflow,
@@ -25,39 +33,43 @@ final class CorrectLocationController extends AbstractController
         RateLimiterFactoryInterface $publicWriteLimiter,
         ClientRateLimit $rateLimit,
     ): Response {
+        $mapParams = ['mapSlug' => $map->getSlug()];
+
         $data = new LocationCorrectionData();
-        $form = $this->createForm(LocationCorrectionType::class, $data);
+        $form = $this->createForm(LocationCorrectionType::class, $data, [
+            'categories_enabled' => $map->usesCategories(),
+        ]);
         $form->handleRequest($request);
 
         if (!$form->isSubmitted() || !$form->isValid()) {
             $this->addFlash('error', 'Änderung ungültig — bitte Eingaben prüfen.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
         if (!$rateLimit->tryConsume($publicWriteLimiter, $request)) {
             $this->addFlash('error', 'Zu viele Anfragen — bitte in ein paar Minuten erneut versuchen.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
         if ($data->website !== null && trim($data->website) !== '') {
             $this->addFlash('success', 'Danke! Deine Änderung wird geprüft und erscheint nach Freigabe.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
         if (!$data->hasContent()) {
             $this->addFlash('error', 'Bitte mindestens Text, Kategorie oder Foto angeben.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
-        $location = $locations->find($data->locationId);
-        if ($location === null || !$location->getStatus()->isVisibleOnMap()) {
+        $location = $locations->findVisibleOnMapById($map, (int) $data->locationId);
+        if ($location === null) {
             $this->addFlash('error', 'Eintrag nicht gefunden oder nicht änderbar.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
         $payload = $data->diffAgainstLocation($location, $data->toPayload());
@@ -68,7 +80,7 @@ final class CorrectLocationController extends AbstractController
         if ($payload === []) {
             $this->addFlash('error', 'Keine Änderung erkannt — bitte Infos anpassen oder ein neues Foto wählen.');
 
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('map_show', $mapParams);
         }
 
         // Moderation-only: never part of the editable diff / Location.applyPayload.
@@ -79,6 +91,6 @@ final class CorrectLocationController extends AbstractController
         $workflow->submitCorrection($location, $payload, $data->email);
         $this->addFlash('success', 'Danke! Deine Änderung wird geprüft und erscheint nach Freigabe.');
 
-        return $this->redirectToRoute('home');
+        return $this->redirectToRoute('map_show', $mapParams);
     }
 }

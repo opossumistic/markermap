@@ -1,11 +1,13 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin Login{% endblock %}
+{% block title %}Plattform-Admin Login{% endblock %}
 
 {% block body %}
     <main class="admin">
-        <p><a href="{{ path('home') }}">← Zur Karte</a></p>
-        <h1>Admin Login</h1>
+        <p class="admin__role">Plattform · alle Maps</p>
+        <p><a href="{{ path('platform_home') }}">← Zur Übersicht</a></p>
+        <h1>Plattform-Admin</h1>
+        <p>Zugang für den Betreiber (alle Maps). Map-Owner loggen sich unter „Map verwalten“ auf der jeweiligen Karte ein.</p>
 
         {% if error %}
             <p class="admin__error" role="alert">Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.</p>

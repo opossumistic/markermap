@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Markermap — Maps{% endblock %}
+
+{% block body %}
+    <main class="platform">
+        <header class="platform__header">
+            <p class="platform__brand">Markermap</p>
+            <h1 class="platform__title">Öffentliche Maps</h1>
+            <p class="platform__lead">Themenkarten mit Community-Markern — vorschlagen, prüfen, freigeben.</p>
+            <p class="platform__cta">
+                <a class="map-btn" href="{{ path('map_create') }}">Neue Map anlegen</a>
+            </p>
+        </header>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if maps is empty %}
+            <p class="platform__empty">Noch keine Maps verfügbar.</p>
+        {% else %}
+            <ul class="platform__list">
+                {% for map in maps %}
+                    <li>
+                        <a class="platform__map-link" href="{{ path('map_show', { mapSlug: map.slug }) }}">
+                            <strong>{{ map.name }}</strong>
+                            {% if map.description %}
+                                <span>{{ map.description }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <nav class="platform__legal" aria-label="Rechtliches und Zugang">
+            <a href="{{ path('legal_impressum') }}">Impressum</a>
+            <a href="{{ path('legal_datenschutz') }}">Datenschutz</a>
+            <a href="{{ path('admin_login') }}" class="platform__legal-muted" title="Nur für Plattform-Betreiber">Plattform-Admin</a>
+        </nav>
+    </main>
+{% endblock %}

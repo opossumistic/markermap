@@ -13,3 +13,10 @@ framework:
             limit: 10
             interval: '15 minutes'
             lock_factory: null
+
+        # Self-service map creation.
+        map_create:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
+            lock_factory: null

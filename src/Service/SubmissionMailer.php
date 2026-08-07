@@ -31,23 +31,28 @@ final class SubmissionMailer
 
     public function notifyAdminNewSubmission(Submission $submission): void
     {
-        if ($this->adminNotifyEmail === '') {
+        $map = $submission->getMap();
+        $to = $map->getNotifyEmail() ?: $this->adminNotifyEmail;
+        if ($to === '') {
             return;
         }
 
         $typeLabel = $this->typeLabel($submission->getType());
         $location = $submission->getLocation();
-        $inboxUrl = $this->urlGenerator->generate('admin_inbox', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $inboxUrl = $map->getOwner() !== null
+            ? $this->urlGenerator->generate('map_admin_inbox', ['mapSlug' => $map->getSlug()], UrlGeneratorInterface::ABSOLUTE_URL)
+            : $this->urlGenerator->generate('admin_inbox', [], UrlGeneratorInterface::ABSOLUTE_URL);
 
         $this->send(
-            to: $this->adminNotifyEmail,
-            subject: sprintf('[Markermap] Neue Meldung: %s (#%s)', $typeLabel, $submission->getId() ?? '?'),
+            to: $to,
+            subject: sprintf('[%s] Neue Meldung: %s (#%s)', $map->getName(), $typeLabel, $submission->getId() ?? '?'),
             template: 'email/admin_new_submission.txt.twig',
             context: [
                 'submission' => $submission,
                 'typeLabel' => $typeLabel,
                 'locationLabel' => $location?->getDisplayLabel(),
                 'inboxUrl' => $inboxUrl,
+                'mapName' => $map->getName(),
             ],
         );
     }
@@ -64,7 +69,9 @@ final class SubmissionMailer
         }
 
         $isNew = $submission->getType() === SubmissionType::New;
-        $mapUrl = $this->urlGenerator->generate('home', [], UrlGeneratorInterface::ABSOLUTE_URL);
+        $mapUrl = $this->urlGenerator->generate('map_show', [
+            'mapSlug' => $submission->getMap()->getSlug(),
+        ], UrlGeneratorInterface::ABSOLUTE_URL);
 
         $this->send(
             to: $email,

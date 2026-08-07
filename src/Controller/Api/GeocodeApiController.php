@@ -2,6 +2,8 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\Map;
+use App\Map\MapSlug;
 use App\Service\ClientRateLimit;
 use App\Service\ReverseGeocoder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -13,8 +15,14 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class GeocodeApiController extends AbstractController
 {
-    #[Route('/api/reverse-geocode', name: 'api_reverse_geocode', methods: ['GET'])]
+    #[Route(
+        '/maps/{mapSlug}/api/reverse-geocode',
+        name: 'api_reverse_geocode',
+        methods: ['GET'],
+        requirements: ['mapSlug' => MapSlug::PATTERN],
+    )]
     public function reverse(
+        Map $map,
         Request $request,
         ReverseGeocoder $geocoder,
         RateLimiterFactoryInterface $geocodeLimiter,
@@ -29,7 +37,13 @@ final class GeocodeApiController extends AbstractController
             return $this->json(['error' => 'lat and lng required'], Response::HTTP_BAD_REQUEST);
         }
 
-        $result = $geocoder->reverse((float) $lat, (float) $lng);
+        $latF = (float) $lat;
+        $lngF = (float) $lng;
+        if ($map->hasBounds() && !$map->containsCoordinates($latF, $lngF)) {
+            return $this->json(['error' => 'out_of_bounds'], Response::HTTP_NOT_FOUND);
+        }
+
+        $result = $geocoder->reverse($latF, $lngF);
         if ($result === null) {
             return $this->json(['error' => 'not_found'], Response::HTTP_NOT_FOUND);
         }
@@ -37,8 +51,14 @@ final class GeocodeApiController extends AbstractController
         return $this->json($result);
     }
 
-    #[Route('/api/geocode', name: 'api_geocode', methods: ['GET'])]
+    #[Route(
+        '/maps/{mapSlug}/api/geocode',
+        name: 'api_geocode',
+        methods: ['GET'],
+        requirements: ['mapSlug' => MapSlug::PATTERN],
+    )]
     public function search(
+        Map $map,
         Request $request,
         ReverseGeocoder $geocoder,
         RateLimiterFactoryInterface $geocodeLimiter,
@@ -51,8 +71,10 @@ final class GeocodeApiController extends AbstractController
             return $this->json(['error' => 'q must be at least 3 characters'], Response::HTTP_BAD_REQUEST);
         }
 
+        assert($map->isPubliclyAccessible());
+
         return $this->json([
-            'results' => $geocoder->search($query),
+            'results' => $geocoder->search($query, $map->getBounds()),
         ]);
     }
 }

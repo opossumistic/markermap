@@ -1,0 +1,88 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inbox · {{ map.name }}{% endblock %}
+
+{% block body %}
+    <main class="admin admin--wide">
+        <p class="admin__role">Owner · {{ map.name }}</p>
+        <p class="admin__nav">
+            <a href="{{ path('map_admin_locations', { mapSlug: map.slug }) }}">Locations</a>
+            · <a href="{{ path('map_show', { mapSlug: map.slug }) }}">Karte</a>
+            ·
+            <form action="{{ path('map_admin_logout', { mapSlug: map.slug }) }}" method="post" class="admin__logout" data-turbo="false">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                <button type="submit">Logout</button>
+            </form>
+        </p>
+        <h1>Moderations-Inbox</h1>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {% if submissions is empty %}
+            <p>Keine offenen Submissions.</p>
+        {% else %}
+            <ul class="admin-list">
+                {% for submission in submissions %}
+                    <li class="admin-card">
+                        <header class="admin-card__head">
+                            <span class="admin-card__id">#{{ submission.id }}</span>
+                            <span class="admin-card__type">{{ submission.type.value }}</span>
+                            <time class="admin-card__meta" datetime="{{ submission.createdAt|date('c') }}">{{ submission.createdAt|date('Y-m-d H:i') }}</time>
+                        </header>
+
+                        <div class="admin-card__body">
+                            <section class="admin-card__section">
+                                <h2 class="admin-card__label">Location</h2>
+                                {% if submission.location %}
+                                    <p class="admin-card__text">
+                                        #{{ submission.location.id }} {{ submission.location.displayLabel }}
+                                        <span class="admin-card__status">{{ submission.location.status.value }}</span>
+                                    </p>
+                                    {% if submission.location.status.value != 'removed' %}
+                                        <form method="post" action="{{ path('map_admin_location_remove', { mapSlug: map.slug, id: submission.location.id }) }}" class="admin-card__danger" onsubmit="return confirm('Location #{{ submission.location.id }} entfernen?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ submission.location.id) }}">
+                                            <input type="hidden" name="redirect" value="map_admin_inbox">
+                                            <button type="submit">Location entfernen</button>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="admin-card__text">—</p>
+                                {% endif %}
+                            </section>
+
+                            {% if submission.payload.image_path is defined and submission.payload.image_path %}
+                                <a class="admin-card__image" href="/{{ submission.payload.image_path }}" target="_blank" rel="noopener noreferrer">
+                                    <img src="/{{ submission.payload.image_path }}" alt="">
+                                </a>
+                            {% endif %}
+
+                            {% if submission.payload.reason is defined and submission.payload.reason %}
+                                <p class="admin-card__note"><strong>Hinweis:</strong> {{ submission.payload.reason }}</p>
+                            {% endif %}
+
+                            <section class="admin-card__section">
+                                <h2 class="admin-card__label">Payload</h2>
+                                <pre class="admin-card__payload">{{ submission.payload|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                            </section>
+                        </div>
+
+                        <div class="admin-card__actions">
+                            <form method="post" action="{{ path('map_admin_submission_approve', { mapSlug: map.slug, id: submission.id }) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('approve' ~ submission.id) }}">
+                                <button type="submit" class="admin-card__btn admin-card__btn--approve">Approve</button>
+                            </form>
+                            <form method="post" action="{{ path('map_admin_submission_reject', { mapSlug: map.slug, id: submission.id }) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ submission.id) }}">
+                                <button type="submit" class="admin-card__btn admin-card__btn--reject">Reject</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </main>
+{% endblock %}

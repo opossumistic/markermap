@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Repository\MapRepository;
 use App\Service\LocationWorkflow;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -14,6 +15,7 @@ final class SeedDemoCommand extends Command
 {
     public function __construct(
         private readonly LocationWorkflow $workflow,
+        private readonly MapRepository $mapRepository,
     ) {
         parent::__construct();
     }
@@ -21,8 +23,9 @@ final class SeedDemoCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $map = $this->mapRepository->getDefaultMap();
 
-        $submission = $this->workflow->submitNew([
+        $submission = $this->workflow->submitNew($map, [
             'street' => 'Schanzenstraße 1',
             'postal_code' => '20357',
             'district' => 'Sternschanze',

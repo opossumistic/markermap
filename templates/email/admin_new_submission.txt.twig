@@ -1,4 +1,4 @@
-Neue Moderationsmeldung auf Markermap
+Neue Moderationsmeldung{% if mapName is defined %} auf {{ mapName }}{% else %} auf Markermap{% endif %}
 
 Typ: {{ typeLabel }}
 Submission: #{{ submission.id }}

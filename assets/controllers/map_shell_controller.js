@@ -1,6 +1,14 @@
 import { Controller } from '@hotwired/stimulus';
 import { loadMapLibre } from 'app-maplibre';
 
+/** Fly / treat as usable GPS once accuracy is at or below this (meters). */
+const USER_FLY_ACCURACY_M = 100;
+/** After this wait, fly to best fix even if still coarse. */
+const USER_FLY_WAIT_MS = 8000;
+const USER_ACCURACY_SOURCE = 'user-location-accuracy';
+const USER_ACCURACY_FILL = 'user-location-accuracy-fill';
+const USER_ACCURACY_LINE = 'user-location-accuracy-line';
+
 /**
  * One-page map shell: browse markers, detail sheet, add/pick mode.
  * Sheet stays collapsed until marker click or "add".
@@ -37,6 +45,7 @@ export default class extends Controller {
         centerLng: { type: Number, default: 9.9937 },
         centerLat: { type: Number, default: 53.5511 },
         zoom: { type: Number, default: 11 },
+        hasBounds: { type: Boolean, default: true },
         minLat: { type: Number, default: 53.38 },
         maxLat: { type: Number, default: 53.75 },
         minLng: { type: Number, default: 9.7 },
@@ -54,6 +63,10 @@ export default class extends Controller {
     pendingFlyToUser = false;
     /** @type {{ lng: number, lat: number }|null} */
     lastUserLngLat = null;
+    /** @type {number|null} meters; null until first accepted fix */
+    lastAccuracy = null;
+    /** @type {number|null} */
+    flyWaitTimer = null;
     maplibregl = null;
     reverseTimer = null;
     reverseAbort = null;
@@ -158,14 +171,14 @@ export default class extends Controller {
             url.searchParams.set('q', query);
             const response = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!response.ok) {
-                this.showSearchMessage('Keine Treffer in Hamburg.');
+                this.showSearchMessage('Keine Treffer.');
                 return;
             }
 
             const data = await response.json();
             const results = data.results ?? [];
             if (results.length === 0) {
-                this.showSearchMessage('Keine Treffer in Hamburg.');
+                this.showSearchMessage('Keine Treffer.');
                 return;
             }
 
@@ -178,6 +191,7 @@ export default class extends Controller {
 
     /**
      * Center map on GPS and keep a live user marker via watchPosition.
+     * Waits for a usable accuracy before flying (avoids ~400m Wi‑Fi first fixes).
      */
     goToCurrentLocation(event) {
         event?.preventDefault();
@@ -192,13 +206,20 @@ export default class extends Controller {
 
         this.pendingFlyToUser = true;
         this.setLocateBusy(true);
-        this.showSearchMessage('Standort wird ermittelt…', { dismissAfter: 0 });
+        this.armFlyWaitTimeout();
 
-        if (this.lastUserLngLat) {
+        const accuracyOk = this.lastAccuracy != null && this.lastAccuracy <= USER_FLY_ACCURACY_M;
+        if (this.lastUserLngLat && accuracyOk) {
             this.flyToUserIfPending(this.lastUserLngLat.lng, this.lastUserLngLat.lat);
+        } else {
+            this.showSearchMessage(
+                this.lastUserLngLat ? 'Standort wird genauer…' : 'Standort wird ermittelt…',
+                { dismissAfter: 0 },
+            );
         }
 
-        this.startUserLocationWatch();
+        // Restart so locate always requests a fresh high-accuracy fix (no cached Wi‑Fi blip).
+        this.startUserLocationWatch({ fresh: true });
     }
 
     canUseGeolocation() {
@@ -226,8 +247,20 @@ export default class extends Controller {
         }
     }
 
-    startUserLocationWatch() {
-        if (!this.canUseGeolocation() || this.geoWatchId !== null) {
+    /**
+     * @param {{ fresh?: boolean }} [options]
+     */
+    startUserLocationWatch({ fresh = false } = {}) {
+        if (!this.canUseGeolocation()) {
+            return;
+        }
+
+        if (fresh && this.geoWatchId !== null) {
+            navigator.geolocation.clearWatch(this.geoWatchId);
+            this.geoWatchId = null;
+        }
+
+        if (this.geoWatchId !== null) {
             return;
         }
 
@@ -236,8 +269,9 @@ export default class extends Controller {
             (error) => this.onUserPositionError(error),
             {
                 enableHighAccuracy: true,
-                timeout: 12000,
-                maximumAge: 10000,
+                timeout: 15000,
+                // Never reuse a stale network fix — first paint was the 400m problem.
+                maximumAge: 0,
             },
         );
         this.setLocateActive(true);
@@ -248,19 +282,57 @@ export default class extends Controller {
             navigator.geolocation.clearWatch(this.geoWatchId);
             this.geoWatchId = null;
         }
+        this.clearFlyWaitTimer();
         this.pendingFlyToUser = false;
         this.lastUserLngLat = null;
+        this.lastAccuracy = null;
         this.removeUserMarker();
+        this.clearAccuracyCircle();
         this.setLocateBusy(false);
         this.setLocateActive(false);
     }
 
     onUserPosition(position) {
+        const { latitude: lat, longitude: lng, accuracy } = position.coords;
+        const accuracyM = Number.isFinite(accuracy) ? accuracy : null;
+
+        if (!this.shouldAcceptFix(accuracyM)) {
+            return;
+        }
+
         this.setLocateBusy(false);
-        const { latitude: lat, longitude: lng } = position.coords;
         this.lastUserLngLat = { lng, lat };
+        this.lastAccuracy = accuracyM;
         this.upsertUserMarker(lng, lat);
+        this.updateAccuracyCircle(lng, lat, accuracyM);
+
+        if (!this.pendingFlyToUser) {
+            return;
+        }
+
+        if (accuracyM != null && accuracyM > USER_FLY_ACCURACY_M) {
+            this.showSearchMessage('Standort wird genauer…', { dismissAfter: 0 });
+            return;
+        }
+
         this.flyToUserIfPending(lng, lat);
+    }
+
+    /**
+     * Drop coarse regressions after a better lock (typical Wi‑Fi blip after GPS).
+     * @param {number|null} accuracyM
+     */
+    shouldAcceptFix(accuracyM) {
+        if (accuracyM == null || this.lastAccuracy == null) {
+            return true;
+        }
+        if (accuracyM <= this.lastAccuracy) {
+            return true;
+        }
+        if (accuracyM <= USER_FLY_ACCURACY_M) {
+            return true;
+        }
+        return accuracyM <= this.lastAccuracy * 1.5;
     }
 
     onUserPositionError(error) {
@@ -277,7 +349,13 @@ export default class extends Controller {
             return;
         }
 
+        // Keep waiting for a later watch tick unless we have nothing to show.
+        if (this.lastUserLngLat) {
+            return;
+        }
+
         this.pendingFlyToUser = false;
+        this.clearFlyWaitTimer();
         let message = 'Standortbestimmung fehlgeschlagen.';
         if (error.code === error.POSITION_UNAVAILABLE) {
             message = 'Standort konnte nicht ermittelt werden.';
@@ -287,18 +365,58 @@ export default class extends Controller {
         this.showSearchMessage(message);
     }
 
-    flyToUserIfPending(lng, lat) {
+    armFlyWaitTimeout() {
+        this.clearFlyWaitTimer();
+        this.flyWaitTimer = window.setTimeout(() => {
+            this.flyWaitTimer = null;
+            if (!this.pendingFlyToUser || !this.lastUserLngLat) {
+                return;
+            }
+            this.flyToUserIfPending(
+                this.lastUserLngLat.lng,
+                this.lastUserLngLat.lat,
+                { force: true },
+            );
+        }, USER_FLY_WAIT_MS);
+    }
+
+    clearFlyWaitTimer() {
+        clearTimeout(this.flyWaitTimer);
+        this.flyWaitTimer = null;
+    }
+
+    /**
+     * @param {number} lng
+     * @param {number} lat
+     * @param {{ force?: boolean }} [options]
+     */
+    flyToUserIfPending(lng, lat, { force = false } = {}) {
         if (!this.pendingFlyToUser || !this.map) {
             return;
         }
 
-        this.pendingFlyToUser = false;
-        if (!this.inBounds(lng, lat)) {
-            this.showSearchMessage('Standort liegt außerhalb Hamburgs.');
+        if (!force && this.lastAccuracy != null && this.lastAccuracy > USER_FLY_ACCURACY_M) {
             return;
         }
 
-        this.clearSearchResults();
+        this.pendingFlyToUser = false;
+        this.clearFlyWaitTimer();
+
+        if (!this.inBounds(lng, lat)) {
+            this.showSearchMessage('Standort liegt außerhalb des Kartenbereichs.');
+            return;
+        }
+
+        const coarse = this.lastAccuracy != null && this.lastAccuracy > USER_FLY_ACCURACY_M;
+        if (coarse) {
+            this.showSearchMessage(
+                `Standort ungenau (±${Math.round(this.lastAccuracy)} m).`,
+                { dismissAfter: 4500 },
+            );
+        } else {
+            this.clearSearchResults();
+        }
+
         this.map.flyTo({
             center: [lng, lat],
             zoom: Math.max(this.map.getZoom(), 14),
@@ -327,6 +445,68 @@ export default class extends Controller {
         if (this.userMarker) {
             this.userMarker.remove();
             this.userMarker = null;
+        }
+    }
+
+    ensureAccuracyLayers() {
+        if (!this.map || this.map.getSource(USER_ACCURACY_SOURCE)) {
+            return;
+        }
+
+        this.map.addSource(USER_ACCURACY_SOURCE, {
+            type: 'geojson',
+            data: emptyAccuracyFeature(),
+        });
+
+        this.map.addLayer({
+            id: USER_ACCURACY_FILL,
+            type: 'fill',
+            source: USER_ACCURACY_SOURCE,
+            paint: {
+                'fill-color': '#1a73e8',
+                'fill-opacity': 0.15,
+            },
+        });
+
+        this.map.addLayer({
+            id: USER_ACCURACY_LINE,
+            type: 'line',
+            source: USER_ACCURACY_SOURCE,
+            paint: {
+                'line-color': '#1a73e8',
+                'line-opacity': 0.45,
+                'line-width': 1.5,
+            },
+        });
+    }
+
+    /**
+     * @param {number} lng
+     * @param {number} lat
+     * @param {number|null} accuracyM
+     */
+    updateAccuracyCircle(lng, lat, accuracyM) {
+        if (!this.map) {
+            return;
+        }
+
+        this.ensureAccuracyLayers();
+        const source = this.map.getSource(USER_ACCURACY_SOURCE);
+        if (!source || typeof source.setData !== 'function') {
+            return;
+        }
+
+        const radius = accuracyM != null && accuracyM > 0 ? accuracyM : 0;
+        source.setData(radius > 0 ? circleFeature(lng, lat, radius) : emptyAccuracyFeature());
+    }
+
+    clearAccuracyCircle() {
+        if (!this.map?.getSource(USER_ACCURACY_SOURCE)) {
+            return;
+        }
+        const source = this.map.getSource(USER_ACCURACY_SOURCE);
+        if (source && typeof source.setData === 'function') {
+            source.setData(emptyAccuracyFeature());
         }
     }
 
@@ -476,7 +656,7 @@ export default class extends Controller {
 
         this.mode = 'detail';
         this.detailProps = props;
-        this.sheetTitleTarget.textContent = props.label ?? props.title ?? 'Tauschbox';
+        this.sheetTitleTarget.textContent = props.label ?? props.title ?? 'Ort';
         this.detailPanelTarget.innerHTML = this.buildDetailHtml(props);
         this.openSheet('detail');
         requestAnimationFrame(() => this.map?.resize());
@@ -660,8 +840,8 @@ export default class extends Controller {
             el.setAttribute(
                 'aria-label',
                 pending
-                    ? `${props.label ?? props.title ?? 'Tauschbox'} (in Prüfung)`
-                    : (props.label ?? props.title ?? 'Tauschbox'),
+                    ? `${props.label ?? props.title ?? 'Ort'} (in Prüfung)`
+                    : (props.label ?? props.title ?? 'Ort'),
             );
             el.addEventListener('click', (event) => {
                 event.stopPropagation();
@@ -678,7 +858,7 @@ export default class extends Controller {
 
     placePickMarker(lng, lat, { pan = false, skipReverse = false } = {}) {
         if (!this.inBounds(lng, lat)) {
-            this.setPickerStatus('Bitte einen Punkt innerhalb Hamburgs wählen.', true);
+            this.setPickerStatus('Bitte einen Punkt im Kartenbereich wählen.', true);
             return;
         }
 
@@ -790,6 +970,10 @@ export default class extends Controller {
     }
 
     inBounds(lng, lat) {
+        if (!this.hasBoundsValue) {
+            return true;
+        }
+
         return lat >= this.minLatValue
             && lat <= this.maxLatValue
             && lng >= this.minLngValue
@@ -847,4 +1031,40 @@ export default class extends Controller {
             .replaceAll('>', '&gt;')
             .replaceAll('"', '&quot;');
     }
+}
+
+function emptyAccuracyFeature() {
+    return {
+        type: 'FeatureCollection',
+        features: [],
+    };
+}
+
+/**
+ * Approximate geodesic circle as polygon (meters → lng/lat at given latitude).
+ * @param {number} lng
+ * @param {number} lat
+ * @param {number} radiusM
+ * @param {number} [steps]
+ */
+function circleFeature(lng, lat, radiusM, steps = 64) {
+    const coords = [];
+    const metersPerDegLat = 110540;
+    const metersPerDegLng = 111320 * Math.cos((lat * Math.PI) / 180);
+    const dLat = radiusM / metersPerDegLat;
+    const dLng = metersPerDegLng > 0 ? radiusM / metersPerDegLng : 0;
+
+    for (let i = 0; i <= steps; i += 1) {
+        const theta = (i / steps) * 2 * Math.PI;
+        coords.push([lng + dLng * Math.cos(theta), lat + dLat * Math.sin(theta)]);
+    }
+
+    return {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+            type: 'Polygon',
+            coordinates: [coords],
+        },
+    };
 }

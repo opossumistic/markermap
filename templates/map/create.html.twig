@@ -1,0 +1,83 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Neue Map anlegen · Markermap{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('vendor/maplibre-gl/maplibre-gl.css') }}">
+{% endblock %}
+
+{% block body %}
+    <main class="platform platform--create">
+        <header class="platform__header">
+            <p class="platform__brand"><a href="{{ path('platform_home') }}">Markermap</a></p>
+            <h1 class="platform__title">Neue Map anlegen</h1>
+            <p class="platform__lead">Nach dem Absenden bekommst du einen Bestätigungslink per E-Mail. Erst danach ist die Map öffentlich.</p>
+        </header>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <p class="admin__flash admin__flash--{{ label }}">{{ message }}</p>
+            {% endfor %}
+        {% endfor %}
+
+        {{ form_start(form, {
+            attr: {
+                class: 'platform-form',
+                novalidate: 'novalidate',
+                'data-turbo': 'false',
+                'data-controller': 'map-viewport map-slug',
+                'data-map-viewport-style-url-value': mapStyleUrl,
+                'data-map-viewport-geocode-url-value': path('api_platform_geocode'),
+                'data-map-viewport-center-lat-value': form.centerLat.vars.value,
+                'data-map-viewport-center-lng-value': form.centerLng.vars.value,
+                'data-map-viewport-zoom-value': form.defaultZoom.vars.value,
+                'data-map-slug-suggest-url-value': path('api_platform_slug_suggest'),
+            }
+        }) }}
+            {{ form_row(form.name) }}
+            {{ form_row(form.slug) }}
+            <p class="platform-form__slug-path" data-map-slug-target="hint" aria-live="polite"></p>
+            {{ form_row(form.email) }}
+            {{ form_row(form.description) }}
+
+            <fieldset class="platform-form__geo">
+                <legend>Kartenausschnitt (Startansicht)</legend>
+                <p class="platform-form__hint" data-map-viewport-target="status" role="status">
+                    Suche einen Ort oder verschiebe die Karte — Zoom und Mittelpunkt werden übernommen.
+                </p>
+                <div class="map-search platform-form__search" role="search">
+                    <input
+                        type="search"
+                        class="map-search__input"
+                        placeholder="Ort oder Adresse suchen…"
+                        autocomplete="off"
+                        enterkeyhint="search"
+                        data-map-viewport-target="searchQuery"
+                        data-action="keydown.enter->map-viewport#searchAddress"
+                        aria-label="Ort für Kartenausschnitt suchen"
+                    >
+                    <button type="button" class="map-btn" data-action="map-viewport#searchAddress">Suchen</button>
+                    <ul class="map-search__results" data-map-viewport-target="searchResults" hidden></ul>
+                </div>
+                <div
+                    class="platform-form__map"
+                    data-map-viewport-target="canvas"
+                    role="region"
+                    aria-label="Kartenausschnitt wählen"
+                ></div>
+                {{ form_widget(form.centerLat) }}
+                {{ form_widget(form.centerLng) }}
+                {{ form_widget(form.defaultZoom) }}
+            </fieldset>
+
+            {{ form_row(form.website) }}
+            <button type="submit" class="map-btn map-btn--block">Map anlegen</button>
+        {{ form_end(form) }}
+
+        <nav class="platform__legal" aria-label="Rechtliches">
+            <a href="{{ path('platform_home') }}">Abbrechen</a>
+            <a href="{{ path('legal_impressum') }}">Impressum</a>
+        </nav>
+    </main>
+{% endblock %}

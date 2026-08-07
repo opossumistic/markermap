@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Location;
+use App\Entity\Map;
 use App\Entity\Submission;
 use App\Enum\ReviewStatus;
 use App\Enum\SubmissionType;
@@ -20,14 +21,18 @@ class SubmissionRepository extends ServiceEntityRepository
     }
 
     /** @return list<Submission> */
-    public function findOpenOrdered(): array
+    public function findOpenOrdered(?Map $map = null): array
     {
-        return $this->createQueryBuilder('s')
+        $qb = $this->createQueryBuilder('s')
             ->andWhere('s.reviewStatus = :status')
             ->setParameter('status', ReviewStatus::Open)
-            ->orderBy('s.createdAt', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('s.createdAt', 'ASC');
+
+        if ($map !== null) {
+            $qb->andWhere('s.map = :map')->setParameter('map', $map);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     public function countOpenStatusReportsFor(Location $location): int
