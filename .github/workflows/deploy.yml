@@ -4,6 +4,19 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_vendor:
+        description: 'Upload+unpack vendor.zip even if composer.lock unchanged (needed for first release cutover)'
+        type: boolean
+        default: false
+      bootstrap_shared:
+        description: 'Copy legacy .env.local / DB / uploads into shared/ if missing'
+        type: boolean
+        default: true
+      keep_releases:
+        description: 'How many releases to keep'
+        type: number
+        default: 5
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -15,6 +28,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Release id
+        id: release
+        run: |
+          RID="$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+          echo "id=$RID" >> "$GITHUB_OUTPUT"
+          echo "Release: $RID"
 
       - name: Compute composer.lock hash
         id: lock-hash
@@ -33,15 +53,15 @@ jobs:
         run: |
           CURRENT="${{ steps.lock-hash.outputs.current_hash }}"
           CACHE_HIT="${{ steps.deploy-meta.outputs.cache-hit }}"
+          FORCE="${{ github.event.inputs.force_vendor || 'false' }}"
           echo "current_hash=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "cache_hit=$CACHE_HIT"
-          # Exact cache key includes composer.lock hash — hit means this lock was deployed successfully before.
-          if [ "$CACHE_HIT" = "true" ]; then
-            echo "deploy_vendor=false" >> "$GITHUB_OUTPUT"
-            echo "composer.lock unchanged — skipping vendor package."
-          else
+          if [ "$FORCE" = "true" ] || [ "$CACHE_HIT" != "true" ]; then
             echo "deploy_vendor=true" >> "$GITHUB_OUTPUT"
-            echo "composer.lock changed or no deploy cache — vendor.zip will be uploaded + unpacked."
+            echo "vendor.zip will be uploaded + unpacked (force=$FORCE cache_hit=$CACHE_HIT)."
+          else
+            echo "deploy_vendor=false" >> "$GITHUB_OUTPUT"
+            echo "composer.lock unchanged — reusing shared/vendor."
           fi
 
       - name: Setup PHP
@@ -78,28 +98,24 @@ jobs:
 
       - name: Ensure runtime directories exist in artifact
         run: |
-          mkdir -p var/cache var/log var/data/backups var/tmp public/uploads/locations
-          touch var/data/.gitkeep public/uploads/locations/.gitkeep var/tmp/.gitkeep
+          mkdir -p var/cache var/tmp public/uploads/locations
+          touch var/tmp/.gitkeep
 
       - name: Pack vendor as zip (single SFTP file)
         if: steps.vendor-check.outputs.deploy_vendor == 'true'
         run: |
           set -euo pipefail
+          mkdir -p var/tmp
           rm -f var/tmp/vendor-deploy.zip
-          # Zip root = vendor contents (autoload.php at archive root).
           (cd vendor && zip -r -q -9 ../var/tmp/vendor-deploy.zip .)
           ls -lh var/tmp/vendor-deploy.zip
-          # Sanity
           unzip -l var/tmp/vendor-deploy.zip | head -5
           unzip -l var/tmp/vendor-deploy.zip | grep -q 'autoload.php'
 
-      # Tree-sync excludes + remote mkdir list share one policy:
-      # - never-on-server: no sync, no mkdir (docs, tests, .git, …)
-      # - sync-excluded shells: no tree sync, but mkdir (vendor zip, var/*, uploads)
-      # - everything else: mkdir from checkout (depth-sorted), then sync
-      # public/vendor/ (MapLibre) stays in the normal sync; composer vendor/ is zip-only.
       - name: Prepare SFTP excludes and remote mkdir list
         id: rsync
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.id }}
         run: |
           set -euo pipefail
 
@@ -115,27 +131,32 @@ jobs:
             --exclude=var/log
             --exclude=var/data
             --exclude=var/tmp
-            --exclude=public/uploads/locations
+            --exclude=public/uploads
             --exclude=tauschbox-hamburg-shared-hosting-konzept.md
+            --exclude=.deploy-meta
           )
           echo "args=${EXCLUDES[*]}" >> "$GITHUB_OUTPUT"
 
-          # Must exist on remote even though content is not tree-synced.
+          RID="$RELEASE_ID"
           FORCE_MKDIR=(
-            var
-            var/cache
-            var/log
-            var/data
-            var/data/backups
-            var/tmp
-            vendor
-            public/uploads
-            public/uploads/locations
+            shared
+            shared/var
+            shared/var/data
+            shared/var/data/backups
+            shared/var/log
+            shared/var/tmp
+            shared/public
+            shared/public/uploads
+            shared/public/uploads/locations
+            shared/vendor
+            releases
+            "releases/${RID}"
           )
 
           MKDIR_FILE="${RUNNER_TEMP}/remote-mkdir.txt"
           {
-            # Prune never-on-server + sync-excluded trees (vendor alone is huge after composer install).
+            printf '%s\n' "${FORCE_MKDIR[@]}"
+            # App dirs under this release only (depth-sorted).
             find . \( \
               -path './.git' -o -path './.git/*' \
               -o -path './.github' -o -path './.github/*' \
@@ -147,10 +168,16 @@ jobs:
               -o -path './var/log' -o -path './var/log/*' \
               -o -path './var/data' -o -path './var/data/*' \
               -o -path './var/tmp' -o -path './var/tmp/*' \
-              -o -path './public/uploads/locations' -o -path './public/uploads/locations/*' \
+              -o -path './public/uploads' -o -path './public/uploads/*' \
+              -o -path './.deploy-meta' -o -path './.deploy-meta/*' \
             \) -prune -o -type d -print \
-              | sed 's|^\./||' | grep -vx '\.'
-            printf '%s\n' "${FORCE_MKDIR[@]}"
+              | sed 's|^\./||' | grep -vx '\.' \
+              | while IFS= read -r d; do
+                  printf 'releases/%s/%s\n' "$RID" "$d"
+                done
+            printf 'releases/%s/var\n' "$RID"
+            printf 'releases/%s/var/cache\n' "$RID"
+            printf 'releases/%s/var/tmp\n' "$RID"
           } | sort -u \
             | awk '{ printf "%04d\t%s\n", gsub(/\//, "/"), $0 }' \
             | sort -n -k1,1 \
@@ -159,7 +186,6 @@ jobs:
           echo "mkdir_file=${MKDIR_FILE}" >> "$GITHUB_OUTPUT"
           echo "Remote mkdir candidates: $(wc -l < "$MKDIR_FILE")"
 
-      # Host allows SFTP only (no SSH exec).
       - name: Ensure remote directories exist
         env:
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}
@@ -186,7 +212,7 @@ jobs:
             "${SFTP_USERNAME}@${SFTP_HOST}"
           rm -f "$BATCH"
 
-      - name: Deploy app via SFTP (without vendor/)
+      - name: Deploy release tree via SFTP (without vendor/)
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
           server: ${{ secrets.SFTP_HOST }}
@@ -195,11 +221,54 @@ jobs:
           password: ${{ secrets.SFTP_PASSWORD }}
           ssh_private_key: ''
           local_path: .
-          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
+          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}/releases/${{ steps.release.outputs.id }}
           sftp_only: true
           rsyncArgs: ${{ steps.rsync.outputs.args }}
 
-      - name: Upload vendor.zip via SFTP
+      - name: Bootstrap live _ops scripts (callable before switch)
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+        run: |
+          set -euo pipefail
+          REMOTE="${SFTP_REMOTE_PATH%/}"
+          # Never mkdir "current" — that would block the symlink switch.
+          # 1) Legacy in-place docroot (pre-cutover).
+          BATCH="$(mktemp)"
+          {
+            echo "cd ${REMOTE}"
+            echo "-mkdir public"
+            echo "-mkdir public/_ops"
+            echo "cd ${REMOTE}/public/_ops"
+            echo "put public/_ops/_helpers.php _helpers.php"
+            echo "put public/_ops/activate-release.php activate-release.php"
+            echo "put public/_ops/unpack-vendor.php unpack-vendor.php"
+            echo "put public/_ops/ensure-runtime.php ensure-runtime.php"
+          } > "$BATCH"
+          sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
+            -o StrictHostKeyChecking=no \
+            "${SFTP_USERNAME}@${SFTP_HOST}"
+          rm -f "$BATCH"
+          # 2) Post-cutover: update ops inside existing current symlink (old release).
+          BATCH="$(mktemp)"
+          {
+            echo "cd ${REMOTE}/current/public/_ops"
+            echo "put public/_ops/_helpers.php _helpers.php"
+            echo "put public/_ops/activate-release.php activate-release.php"
+            echo "put public/_ops/unpack-vendor.php unpack-vendor.php"
+            echo "put public/_ops/ensure-runtime.php ensure-runtime.php"
+          } > "$BATCH"
+          sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
+            -o StrictHostKeyChecking=no \
+            "${SFTP_USERNAME}@${SFTP_HOST}" \
+            && echo "Updated current/public/_ops" \
+            || echo "No current symlink yet — legacy public/_ops is enough for first cutover."
+          rm -f "$BATCH"
+
+      - name: Upload vendor.zip to shared/var/tmp
         if: steps.vendor-check.outputs.deploy_vendor == 'true'
         env:
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}
@@ -212,35 +281,14 @@ jobs:
           REMOTE="${SFTP_REMOTE_PATH%/}"
           BATCH="$(mktemp)"
           {
-            echo "cd ${REMOTE}/var/tmp"
+            echo "cd ${REMOTE}/shared/var/tmp"
             echo "put var/tmp/vendor-deploy.zip vendor-deploy.zip"
           } > "$BATCH"
           sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
             -o StrictHostKeyChecking=no \
             "${SFTP_USERNAME}@${SFTP_HOST}"
           rm -f "$BATCH"
-          echo "vendor-deploy.zip uploaded."
-
-      - name: Unpack vendor on server
-        if: steps.vendor-check.outputs.deploy_vendor == 'true'
-        env:
-          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
-          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
-            echo "::error::OPS_BASE_URL and MIGRATE_TOKEN secrets are required to unpack vendor.zip"
-            exit 1
-          fi
-          BASE="${OPS_BASE_URL%/}"
-          echo "POST ${BASE}/_ops/unpack-vendor.php"
-          curl -fsS -X POST "${BASE}/_ops/unpack-vendor.php" \
-            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
-            -H "Accept: application/json" \
-            --max-time 600 \
-            -o /tmp/unpack.json
-          cat /tmp/unpack.json
-          php -r '$j=json_decode(file_get_contents("/tmp/unpack.json"), true); exit(!empty($j["ok"])?0:1);'
+          echo "vendor-deploy.zip uploaded to shared/var/tmp."
 
       - name: Ensure runtime dirs on server
         if: success()
@@ -262,6 +310,55 @@ jobs:
             -o /tmp/ensure.json
           cat /tmp/ensure.json
           php -r '$j=json_decode(file_get_contents("/tmp/ensure.json"), true); exit(!empty($j["ok"])?0:1);'
+
+      - name: Unpack vendor into shared/vendor
+        if: steps.vendor-check.outputs.deploy_vendor == 'true'
+        env:
+          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
+            echo "::error::OPS_BASE_URL and MIGRATE_TOKEN secrets are required to unpack vendor.zip"
+            exit 1
+          fi
+          BASE="${OPS_BASE_URL%/}"
+          echo "POST ${BASE}/_ops/unpack-vendor.php"
+          curl -fsS -X POST "${BASE}/_ops/unpack-vendor.php" \
+            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
+            -H "Accept: application/json" \
+            --max-time 600 \
+            -o /tmp/unpack.json
+          cat /tmp/unpack.json
+          php -r '$j=json_decode(file_get_contents("/tmp/unpack.json"), true); exit(!empty($j["ok"])?0:1);'
+
+      - name: Activate release (symlink shared + switch current)
+        if: success()
+        env:
+          OPS_BASE_URL: ${{ secrets.OPS_BASE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+          BOOTSTRAP: ${{ github.event.inputs.bootstrap_shared || 'true' }}
+          KEEP: ${{ github.event.inputs.keep_releases || '5' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPS_BASE_URL:-}" ] || [ -z "${MIGRATE_TOKEN:-}" ]; then
+            echo "::error::OPS_BASE_URL and MIGRATE_TOKEN required to activate release"
+            exit 1
+          fi
+          BASE="${OPS_BASE_URL%/}"
+          BOOTSTRAP_FLAG=0
+          if [ "$BOOTSTRAP" = "true" ]; then BOOTSTRAP_FLAG=1; fi
+          echo "POST ${BASE}/_ops/activate-release.php release=${RELEASE_ID}"
+          curl -fsS -X POST "${BASE}/_ops/activate-release.php" \
+            -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data "release=${RELEASE_ID}&keep=${KEEP}&bootstrap_shared=${BOOTSTRAP_FLAG}" \
+            --max-time 120 \
+            -o /tmp/activate.json
+          cat /tmp/activate.json
+          php -r '$j=json_decode(file_get_contents("/tmp/activate.json"), true); exit(!empty($j["ok"])?0:1);'
 
       - name: Run migrations on server
         if: success()

@@ -1,14 +1,16 @@
 <?php
 
 /**
- * Shared-hosting ops: unpack vendor.zip without booting Symfony
- * (vendor may be missing or mid-replace — chicken/egg).
+ * Unpack vendor.zip into shared/vendor (release-aware deploy).
  *
  * POST /_ops/unpack-vendor.php
- * Header: X-Migrate-Token: <MIGRATE_TOKEN from server .env.local>
+ * Header: X-Migrate-Token: <MIGRATE_TOKEN>
  *
- * Expects archive at: {project}/var/tmp/vendor-deploy.zip
+ * Expects: {deploy}/shared/var/tmp/vendor-deploy.zip
  * Archive contents = files of vendor/ (autoload.php at zip root).
+ *
+ * Legacy fallback: {project}/var/tmp/vendor-deploy.zip → {project}/vendor
+ * when shared/ does not exist yet.
  */
 
 declare(strict_types=1);
@@ -19,44 +21,46 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=UTF-8');
 header('X-Robots-Tag: noindex');
 
+require __DIR__.'/_helpers.php';
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'method_not_allowed']);
-    exit;
+    ops_json_exit(['ok' => false, 'error' => 'method_not_allowed'], 405);
 }
 
 if (!class_exists(ZipArchive::class)) {
-    http_response_code(503);
-    echo json_encode(['ok' => false, 'error' => 'zip_extension_missing']);
-    exit;
+    ops_json_exit(['ok' => false, 'error' => 'zip_extension_missing'], 503);
 }
 
-$projectDir = dirname(__DIR__, 2);
-$tokenExpected = ops_read_env_value($projectDir, 'MIGRATE_TOKEN');
-$tokenProvided = $_SERVER['HTTP_X_MIGRATE_TOKEN']
-    ?? (is_string($_POST['token'] ?? null) ? $_POST['token'] : '');
+ops_require_migrate_token();
 
-if ($tokenExpected === '' || $tokenExpected === 'change-me') {
-    http_response_code(503);
-    echo json_encode(['ok' => false, 'error' => 'MIGRATE_TOKEN not configured']);
-    exit;
+$deployRoot = ops_deploy_root();
+$shared = $deployRoot.'/shared';
+$useShared = is_dir($shared) || ops_mkdirp($shared);
+
+if ($useShared) {
+    ops_mkdirp($shared.'/var/tmp');
+    ops_mkdirp($shared.'/vendor');
+    $zipPath = $shared.'/var/tmp/vendor-deploy.zip';
+    $staging = $shared.'/var/tmp/vendor_staging';
+    $backup = $shared.'/var/tmp/vendor_previous';
+    $vendor = $shared.'/vendor';
+    $mode = 'shared';
+} else {
+    $projectDir = ops_project_dir();
+    $zipPath = $projectDir.'/var/tmp/vendor-deploy.zip';
+    $staging = $projectDir.'/var/tmp/vendor_staging';
+    $backup = $projectDir.'/var/tmp/vendor_previous';
+    $vendor = $projectDir.'/vendor';
+    $mode = 'legacy';
 }
-
-if ($tokenProvided === '' || !hash_equals($tokenExpected, $tokenProvided)) {
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'error' => 'unauthorized']);
-    exit;
-}
-
-$zipPath = $projectDir.'/var/tmp/vendor-deploy.zip';
-$staging = $projectDir.'/var/tmp/vendor_staging';
-$backup = $projectDir.'/var/tmp/vendor_previous';
-$vendor = $projectDir.'/vendor';
 
 if (!is_file($zipPath)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'archive_missing', 'path' => 'var/tmp/vendor-deploy.zip']);
-    exit;
+    ops_json_exit([
+        'ok' => false,
+        'error' => 'archive_missing',
+        'path' => $mode === 'shared' ? 'shared/var/tmp/vendor-deploy.zip' : 'var/tmp/vendor-deploy.zip',
+        'mode' => $mode,
+    ], 400);
 }
 
 try {
@@ -82,6 +86,10 @@ try {
 
     ops_remove_path($backup);
     if (is_dir($vendor) || is_link($vendor)) {
+        // shared/vendor is a real dir we replace; never symlink the shared vendor root away oddly.
+        if (is_link($vendor)) {
+            throw new RuntimeException('vendor path is a symlink — refuse to replace: '.$vendor);
+        }
         if (!rename($vendor, $backup)) {
             throw new RuntimeException('Cannot move current vendor aside.');
         }
@@ -97,77 +105,21 @@ try {
     ops_remove_path($backup);
     @unlink($zipPath);
 
-    echo json_encode([
+    if (\function_exists('opcache_reset')) {
+        @opcache_reset();
+    }
+
+    ops_json_exit([
         'ok' => true,
+        'mode' => $mode,
         'vendor' => 'replaced',
         'autoload' => is_file($vendor.'/autoload.php'),
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    ops_json_exit([
         'ok' => false,
         'error' => 'unpack_failed',
         'message' => $e->getMessage(),
-    ]);
-}
-
-/**
- * Minimal .env reader (no Symfony). Last matching key wins across .env then .env.local.
- */
-function ops_read_env_value(string $projectDir, string $key): string
-{
-    $value = '';
-    foreach (['.env', '.env.local'] as $file) {
-        $path = $projectDir.'/'.$file;
-        if (!is_file($path) || !is_readable($path)) {
-            continue;
-        }
-        $lines = file($path, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-            continue;
-        }
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) {
-                continue;
-            }
-            if (!str_starts_with($line, $key.'=')) {
-                continue;
-            }
-            $raw = substr($line, strlen($key) + 1);
-            $value = trim($raw);
-            if (
-                (str_starts_with($value, '"') && str_ends_with($value, '"'))
-                || (str_starts_with($value, "'") && str_ends_with($value, "'"))
-            ) {
-                $value = substr($value, 1, -1);
-            }
-        }
-    }
-
-    return $value;
-}
-
-function ops_remove_path(string $path): void
-{
-    if (is_link($path) || is_file($path)) {
-        @unlink($path);
-
-        return;
-    }
-    if (!is_dir($path)) {
-        return;
-    }
-
-    $items = scandir($path);
-    if ($items === false) {
-        return;
-    }
-    foreach ($items as $item) {
-        if ($item === '.' || $item === '..') {
-            continue;
-        }
-        ops_remove_path($path.\DIRECTORY_SEPARATOR.$item);
-    }
-    @rmdir($path);
+        'mode' => $mode,
+    ], 500);
 }
