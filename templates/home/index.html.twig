@@ -119,18 +119,14 @@
             <div class="map-sheet__body" data-map-shell-target="detailPanel" hidden></div>
 
             <div class="map-sheet__body map-sheet__add" data-map-shell-target="addPanel" hidden>
-                <p class="picker-status" data-map-shell-target="pickerStatus" role="status">Klicke auf die Karte oder suche eine Adresse.</p>
+                <p class="picker-status" data-map-shell-target="pickerStatus" role="status">Auf die Karte tippen oder oben Adresse suchen.</p>
 
                 {{ form_start(form, { action: path('location_submit', { mapSlug: map.slug }), attr: { novalidate: 'novalidate', class: 'map-sheet__form', 'data-turbo': 'false' } }) }}
                     {{ form_errors(form) }}
                     {{ form_row(form.title) }}
-                    {{ form_row(form.street) }}
-                    {{ form_row(form.postalCode) }}
                     {% if form.categories is defined %}
                         {{ form_row(form.categories) }}
                     {% endif %}
-                    {{ form_row(form.description) }}
-                    {{ form_row(form.image) }}
 
                     {% if form.lat.vars.errors|length or form.lng.vars.errors|length %}
                         <p class="picker-status is-error">Bitte einen gültigen Standort auf der Karte setzen.</p>
@@ -139,7 +135,15 @@
                     <div class="coord-field">{{ form_widget(form.lat) }}</div>
                     <div class="coord-field">{{ form_widget(form.lng) }}</div>
 
-                    {{ form_row(form.email) }}
+                    <details class="map-sheet__more"{% if form.street.vars.errors|length or form.postalCode.vars.errors|length or form.description.vars.errors|length or form.image.vars.errors|length or form.email.vars.errors|length %} open{% endif %}>
+                        <summary>Mehr Angaben</summary>
+                        {{ form_row(form.street) }}
+                        {{ form_row(form.postalCode) }}
+                        {{ form_row(form.description) }}
+                        {{ form_row(form.image) }}
+                        {{ form_row(form.email) }}
+                    </details>
+
                     {{ form_row(form.website) }}
                     <button type="submit" class="map-btn map-btn--block">Vorschlag absenden</button>
                 {{ form_end(form) }}

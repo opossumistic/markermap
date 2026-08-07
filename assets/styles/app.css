@@ -845,6 +845,38 @@ body {
     padding-left: 1.2rem;
 }
 
+.map-sheet__more {
+    margin: 0 0 0.85rem;
+    border-top: 1px solid #e4dfd6;
+    padding-top: 0.55rem;
+}
+
+.map-sheet__more > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    list-style: none;
+    color: #444;
+}
+
+.map-sheet__more > summary::-webkit-details-marker {
+    display: none;
+}
+
+.map-sheet__more > summary::before {
+    content: '+ ';
+    font-weight: 700;
+    color: #777;
+}
+
+.map-sheet__more[open] > summary::before {
+    content: '− ';
+}
+
+.map-sheet__more > summary + * {
+    margin-top: 0.75rem;
+}
+
 .coord-field,
 .hp-field {
     position: absolute;
@@ -858,6 +890,20 @@ body {
     font-size: 0.9rem;
     margin: 0 0 0.85rem;
     color: #444;
+    line-height: 1.35;
+}
+
+.picker-status.is-loading {
+    color: #666;
+}
+
+.picker-status.is-ok {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.picker-status.is-unclear {
+    color: #555;
 }
 
 .picker-status.is-error {
@@ -1094,6 +1140,26 @@ body {
     overflow: hidden;
     border: 1px solid #cfc8bc;
     background: #ddd;
+}
+
+.platform-form__more {
+    border-top: 1px solid #e4dfd6;
+    padding-top: 0.35rem;
+}
+
+.platform-form__more > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #444;
+    list-style: none;
+}
+
+.platform-form__more > summary::-webkit-details-marker {
+    display: none;
+}
+
+.platform-form__more[open] > summary {
+    margin-bottom: 0.55rem;
 }
 
 .platform--create {

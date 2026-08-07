@@ -1,25 +1,18 @@
 import { Controller } from '@hotwired/stimulus';
 
 /**
- * Suggests URL slug from map name; stops once the user edits the slug manually.
+ * Shows live /maps/{slug} preview from the map name (slug is server-allocated on submit).
  */
 export default class extends Controller {
-    static targets = ['name', 'slug', 'hint'];
+    static targets = ['name', 'hint'];
 
     static values = {
         suggestUrl: String,
     };
 
-    slugTouched = false;
     debounceTimer = null;
     abort = null;
     seq = 0;
-
-    connect() {
-        if (this.hasSlugTarget && this.slugTarget.value.trim() !== '') {
-            this.slugTouched = true;
-        }
-    }
 
     disconnect() {
         if (this.debounceTimer) {
@@ -29,17 +22,6 @@ export default class extends Controller {
     }
 
     nameInput() {
-        if (this.slugTouched) {
-            return;
-        }
-        this.scheduleSuggest();
-    }
-
-    slugInput() {
-        this.slugTouched = this.slugTarget.value.trim() !== '';
-    }
-
-    scheduleSuggest() {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
@@ -47,12 +29,13 @@ export default class extends Controller {
     }
 
     async suggest() {
-        if (this.slugTouched || !this.hasNameTarget || !this.hasSlugTarget) {
+        if (!this.hasNameTarget || !this.hasHintTarget) {
             return;
         }
 
         const name = this.nameTarget.value.trim();
         if (name.length < 2) {
+            this.hintTarget.textContent = '';
             return;
         }
 
@@ -67,16 +50,12 @@ export default class extends Controller {
                 headers: { Accept: 'application/json' },
                 signal: this.abort.signal,
             });
-            if (!response.ok || seq !== this.seq || this.slugTouched) {
+            if (!response.ok || seq !== this.seq) {
                 return;
             }
             const data = await response.json();
-            if (!data.slug || this.slugTouched) {
-                return;
-            }
-            this.slugTarget.value = data.slug;
-            if (this.hasHintTarget && data.path) {
-                this.hintTarget.textContent = `Wird zu ${data.path}`;
+            if (data.path) {
+                this.hintTarget.textContent = `Adresse: ${data.path}`;
             }
         } catch (error) {
             if (error?.name === 'AbortError') {

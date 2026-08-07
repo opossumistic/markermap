@@ -34,14 +34,17 @@ final class AuthController extends AbstractController
         $owner = $map->getOwner();
         if ($owner !== null) {
             $security->login($owner, MapOwnerAuthenticator::class, 'map_admin');
-            $this->addFlash('success', sprintf('Map „%s“ ist freigeschaltet. Willkommen im Admin.', $map->getName()));
-
-            return $this->redirectToRoute('map_admin_inbox', ['mapSlug' => $map->getSlug()]);
         }
 
-        $this->addFlash('success', sprintf('Map „%s“ ist jetzt öffentlich.', $map->getName()));
+        $this->addFlash(
+            'success',
+            sprintf('Map „%s“ ist live. Trag den ersten Ort ein — Moderation findest du unten unter „Moderation“.', $map->getName()),
+        );
 
-        return $this->redirectToRoute('map_show', ['mapSlug' => $map->getSlug()]);
+        return $this->redirectToRoute('map_show', [
+            'mapSlug' => $map->getSlug(),
+            'add' => 1,
+        ]);
     }
 
     #[Route('/auth/magic/{selector}/{token}', name: 'auth_magic_login', methods: ['GET'], requirements: [

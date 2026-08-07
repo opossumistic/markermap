@@ -15,8 +15,12 @@ final class NewLocationSubmissionData
     #[Assert\Length(max: 180)]
     public ?string $street = null;
 
+    /** Worldwide postcodes (DE 5 digits, UK/CA alphanumerics, etc.). Empty allowed. */
     #[Assert\Length(max: 10)]
-    #[Assert\Regex(pattern: '/^\d{5}$/', message: 'Bitte eine 5-stellige PLZ angeben.')]
+    #[Assert\Regex(
+        pattern: '/^(?:[A-Za-z0-9][A-Za-z0-9 \-]{0,9})?$/',
+        message: 'PLZ/Postcode bitte prüfen (Buchstaben, Ziffern, Leerzeichen oder Bindestrich).',
+    )]
     public ?string $postalCode = null;
 
     #[Assert\Length(

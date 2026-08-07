@@ -12,7 +12,7 @@
         <header class="platform__header">
             <p class="platform__brand"><a href="{{ path('platform_home') }}">Markermap</a></p>
             <h1 class="platform__title">Neue Map anlegen</h1>
-            <p class="platform__lead">Nach dem Absenden bekommst du einen Bestätigungslink per E-Mail. Erst danach ist die Map öffentlich.</p>
+            <p class="platform__lead">Drei Angaben reichen: Name, E-Mail, Kartenausschnitt. Bestätigungslink kommt per Mail — danach ist die Map live.</p>
         </header>
 
         {% for label, messages in app.flashes %}
@@ -36,15 +36,13 @@
             }
         }) }}
             {{ form_row(form.name) }}
-            {{ form_row(form.slug) }}
             <p class="platform-form__slug-path" data-map-slug-target="hint" aria-live="polite"></p>
             {{ form_row(form.email) }}
-            {{ form_row(form.description) }}
 
             <fieldset class="platform-form__geo">
-                <legend>Kartenausschnitt (Startansicht)</legend>
+                <legend>Wo soll die Karte starten?</legend>
                 <p class="platform-form__hint" data-map-viewport-target="status" role="status">
-                    Suche einen Ort oder verschiebe die Karte — Zoom und Mittelpunkt werden übernommen.
+                    Ort suchen oder Karte verschieben — das wird die Startansicht.
                 </p>
                 <div class="map-search platform-form__search" role="search">
                     <input
@@ -70,6 +68,11 @@
                 {{ form_widget(form.centerLng) }}
                 {{ form_widget(form.defaultZoom) }}
             </fieldset>
+
+            <details class="platform-form__more">
+                <summary>Optionale Beschreibung</summary>
+                {{ form_row(form.description) }}
+            </details>
 
             {{ form_row(form.website) }}
             <button type="submit" class="map-btn map-btn--block">Map anlegen</button>

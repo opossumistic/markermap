@@ -93,13 +93,71 @@ jobs:
           unzip -l var/tmp/vendor-deploy.zip | head -5
           unzip -l var/tmp/vendor-deploy.zip | grep -q 'autoload.php'
 
-      # Always exclude composer vendor/ from tree sync — uploaded as zip when needed.
-      # public/vendor/ (MapLibre) stays in the normal sync.
-      - name: Prepare SFTP excludes
+      # Tree-sync excludes + remote mkdir list share one policy:
+      # - never-on-server: no sync, no mkdir (docs, tests, .git, …)
+      # - sync-excluded shells: no tree sync, but mkdir (vendor zip, var/*, uploads)
+      # - everything else: mkdir from checkout (depth-sorted), then sync
+      # public/vendor/ (MapLibre) stays in the normal sync; composer vendor/ is zip-only.
+      - name: Prepare SFTP excludes and remote mkdir list
         id: rsync
         run: |
-          EXCLUDES="--exclude=.git* --exclude=.github --exclude=.ddev --exclude=var/cache --exclude=var/log --exclude=var/data --exclude=var/tmp --exclude=vendor --exclude=public/uploads/locations --exclude=.env* --exclude=tests --exclude=tauschbox-hamburg-shared-hosting-konzept.md"
-          echo "args=${EXCLUDES}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+
+          EXCLUDES=(
+            --exclude=.git*
+            --exclude=.github
+            --exclude=.ddev
+            --exclude=.env*
+            --exclude=docs
+            --exclude=tests
+            --exclude=vendor
+            --exclude=var/cache
+            --exclude=var/log
+            --exclude=var/data
+            --exclude=var/tmp
+            --exclude=public/uploads/locations
+            --exclude=tauschbox-hamburg-shared-hosting-konzept.md
+          )
+          echo "args=${EXCLUDES[*]}" >> "$GITHUB_OUTPUT"
+
+          # Must exist on remote even though content is not tree-synced.
+          FORCE_MKDIR=(
+            var
+            var/cache
+            var/log
+            var/data
+            var/data/backups
+            var/tmp
+            vendor
+            public/uploads
+            public/uploads/locations
+          )
+
+          MKDIR_FILE="${RUNNER_TEMP}/remote-mkdir.txt"
+          {
+            # Prune never-on-server + sync-excluded trees (vendor alone is huge after composer install).
+            find . \( \
+              -path './.git' -o -path './.git/*' \
+              -o -path './.github' -o -path './.github/*' \
+              -o -path './.ddev' -o -path './.ddev/*' \
+              -o -path './docs' -o -path './docs/*' \
+              -o -path './tests' -o -path './tests/*' \
+              -o -path './vendor' -o -path './vendor/*' \
+              -o -path './var/cache' -o -path './var/cache/*' \
+              -o -path './var/log' -o -path './var/log/*' \
+              -o -path './var/data' -o -path './var/data/*' \
+              -o -path './var/tmp' -o -path './var/tmp/*' \
+              -o -path './public/uploads/locations' -o -path './public/uploads/locations/*' \
+            \) -prune -o -type d -print \
+              | sed 's|^\./||' | grep -vx '\.'
+            printf '%s\n' "${FORCE_MKDIR[@]}"
+          } | sort -u \
+            | awk '{ printf "%04d\t%s\n", gsub(/\//, "/"), $0 }' \
+            | sort -n -k1,1 \
+            | cut -f2- > "$MKDIR_FILE"
+
+          echo "mkdir_file=${MKDIR_FILE}" >> "$GITHUB_OUTPUT"
+          echo "Remote mkdir candidates: $(wc -l < "$MKDIR_FILE")"
 
       # Host allows SFTP only (no SSH exec).
       - name: Ensure remote directories exist
@@ -109,6 +167,7 @@ jobs:
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+          MKDIR_FILE: ${{ steps.rsync.outputs.mkdir_file }}
         run: |
           set -euo pipefail
           sudo apt-get update -qq
@@ -117,9 +176,10 @@ jobs:
           BATCH="$(mktemp)"
           {
             echo "cd ${REMOTE}"
-            for d in assets bin config data migrations public public/_ops src templates translations var var/cache var/log var/data var/data/backups var/tmp vendor public/uploads public/uploads/locations; do
+            while IFS= read -r d; do
+              [ -n "${d}" ] || continue
               echo "-mkdir ${d}"
-            done
+            done < "${MKDIR_FILE}"
           } > "$BATCH"
           sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
             -o StrictHostKeyChecking=no \

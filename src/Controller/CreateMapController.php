@@ -48,7 +48,7 @@ final class CreateMapController extends AbstractController
             try {
                 $registration->register(
                     (string) $data->name,
-                    (string) $data->slug,
+                    '',
                     (string) $data->email,
                     (float) $data->centerLat,
                     (float) $data->centerLng,

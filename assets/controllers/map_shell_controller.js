@@ -582,12 +582,10 @@ export default class extends Controller {
         this.mode = 'pick';
         this.map.getCanvas().style.cursor = 'crosshair';
         this.openSheet('add');
-        this.sheetTitleTarget.textContent = 'Box vorschlagen';
+        this.sheetTitleTarget.textContent = 'Ort eintragen';
         this.applyAddress(hit);
         this.placePickMarker(hit.lng, hit.lat, { pan: true, skipReverse: true });
-        const label = [hit.street, hit.postalCode, hit.district].filter(Boolean).join(', ')
-            || hit.displayName;
-        this.setPickerStatus(`Adresse: ${label}`);
+        this.setAddressStatusFromGeo(hit);
         requestAnimationFrame(() => this.map?.resize());
     }
 
@@ -595,12 +593,12 @@ export default class extends Controller {
         this.mode = 'pick';
         this.map.getCanvas().style.cursor = 'crosshair';
         this.openSheet('add');
-        this.sheetTitleTarget.textContent = 'Box vorschlagen';
+        this.sheetTitleTarget.textContent = 'Ort eintragen';
 
         if (lng !== null && lat !== null) {
             this.placePickMarker(lng, lat);
         } else {
-            this.setPickerStatus('Klicke auf die Karte, um den Standort zu setzen.');
+            this.setAddressStatus('idle');
             const existingLat = this.parseCoord(this.latTarget.value);
             const existingLng = this.parseCoord(this.lngTarget.value);
             if (existingLat !== null && existingLng !== null) {
@@ -858,7 +856,7 @@ export default class extends Controller {
 
     placePickMarker(lng, lat, { pan = false, skipReverse = false } = {}) {
         if (!this.inBounds(lng, lat)) {
-            this.setPickerStatus('Bitte einen Punkt im Kartenbereich wählen.', true);
+            this.setPickerStatus('Bitte einen Punkt im Kartenbereich wählen.', { error: true });
             return;
         }
 
@@ -891,13 +889,13 @@ export default class extends Controller {
             return;
         }
 
-        this.setPickerStatus('Adresse wird ermittelt…');
+        this.setAddressStatus('loading');
         this.scheduleReverseGeocode(roundedLat, roundedLng);
     }
 
     scheduleReverseGeocode(lat, lng) {
         if (!this.reverseUrlValue) {
-            this.setPickerStatus(`Standort gesetzt: ${lat}, ${lng}`);
+            this.setAddressStatus('unclear');
             return;
         }
 
@@ -939,20 +937,19 @@ export default class extends Controller {
             }
 
             if (!response.ok) {
-                this.setPickerStatus(`Standort gesetzt: ${lat}, ${lng} — Adresse nicht gefunden.`);
+                this.setAddressStatus('unclear');
                 return;
             }
 
             const data = await response.json();
             this.applyAddress(data);
-            const label = [data.street, data.postalCode, data.district].filter(Boolean).join(', ');
-            this.setPickerStatus(label ? `Adresse: ${label}` : `Standort gesetzt: ${lat}, ${lng}`);
+            this.setAddressStatusFromGeo(data);
         } catch (error) {
             if (error?.name === 'AbortError') {
                 return;
             }
             console.error(error);
-            this.setPickerStatus(`Standort gesetzt: ${lat}, ${lng} — Adresse konnte nicht geladen werden.`);
+            this.setAddressStatus('error');
         } finally {
             if (this.reverseAbort === abort) {
                 this.reverseAbort = null;
@@ -988,12 +985,54 @@ export default class extends Controller {
         return Number.isFinite(n) ? n : null;
     }
 
-    setPickerStatus(message, isError = false) {
+    /**
+     * One-line address feedback under the pin (street/PLZ live in „Mehr Angaben“).
+     * @param {'idle'|'loading'|'ok'|'unclear'|'error'} kind
+     */
+    setAddressStatus(kind, label = '') {
+        const copy = {
+            idle: 'Auf die Karte tippen oder oben Adresse suchen.',
+            loading: 'Adresse wird ermittelt…',
+            ok: label,
+            unclear: 'Adresse unklar — Pin ist gesetzt. Unter „Mehr Angaben“ nachziehen.',
+            error: 'Adresse nicht geladen — Pin ist gesetzt.',
+        };
+        this.setPickerStatus(copy[kind] ?? copy.idle, {
+            loading: kind === 'loading',
+            ok: kind === 'ok',
+            unclear: kind === 'unclear',
+            error: kind === 'error',
+        });
+    }
+
+    setAddressStatusFromGeo(data) {
+        const label = this.formatAddressLabel(data);
+        if (label) {
+            this.setAddressStatus('ok', label);
+            return;
+        }
+        this.setAddressStatus('unclear');
+    }
+
+    formatAddressLabel(data) {
+        if (!data || typeof data !== 'object') {
+            return '';
+        }
+        return [data.street, data.postalCode, data.district].filter(Boolean).join(', ')
+            || (typeof data.displayName === 'string' ? data.displayName.trim() : '')
+            || '';
+    }
+
+    setPickerStatus(message, flags = {}) {
         if (!this.hasPickerStatusTarget) {
             return;
         }
+        const { loading = false, ok = false, unclear = false, error = false } = flags;
         this.pickerStatusTarget.textContent = message;
-        this.pickerStatusTarget.classList.toggle('is-error', isError);
+        this.pickerStatusTarget.classList.toggle('is-loading', loading);
+        this.pickerStatusTarget.classList.toggle('is-ok', ok);
+        this.pickerStatusTarget.classList.toggle('is-unclear', unclear);
+        this.pickerStatusTarget.classList.toggle('is-error', error);
     }
 
     buildDetailHtml(props) {

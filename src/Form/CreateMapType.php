@@ -27,24 +27,14 @@ final class CreateMapType extends AbstractType
                     'data-action' => 'input->map-slug#nameInput',
                 ],
             ])
-            ->add('slug', TextType::class, [
-                'label' => 'URL-Slug',
-                'help' => 'Wird aus dem Namen vorgeschlagen — bei Bedarf anpassen.',
-                'attr' => [
-                    'placeholder' => 'tischtennis-hamburg',
-                    'autocomplete' => 'off',
-                    'data-map-slug-target' => 'slug',
-                    'data-action' => 'input->map-slug#slugInput',
-                ],
-            ])
             ->add('email', EmailType::class, [
-                'label' => 'Deine E-Mail (Owner)',
-                'help' => 'Zur Bestätigung und für den Admin-Magic-Link.',
+                'label' => 'Deine E-Mail',
+                'help' => 'Bestätigungslink + später Login zum Moderieren.',
             ])
             ->add('description', TextareaType::class, [
-                'label' => 'Kurzbeschreibung',
+                'label' => 'Kurzbeschreibung (optional)',
                 'required' => false,
-                'attr' => ['rows' => 3],
+                'attr' => ['rows' => 2],
             ])
             ->add('centerLat', NumberType::class, [
                 'label' => false,

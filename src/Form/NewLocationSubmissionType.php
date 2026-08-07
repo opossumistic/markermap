@@ -20,13 +20,22 @@ final class NewLocationSubmissionType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        $categoriesEnabled = (bool) $options['categories_enabled'];
+        $titleConstraints = [
+            new Assert\Length(max: 180),
+        ];
+        if (!$categoriesEnabled) {
+            $titleConstraints[] = new Assert\NotBlank(message: 'Bitte eine Bezeichnung angeben.');
+        }
+
         $builder
             ->add('title', TextType::class, [
-                'label' => 'Bezeichnung'.($options['categories_enabled'] ? ' (optional)' : ''),
-                'required' => false,
-                'help' => $options['categories_enabled']
-                    ? 'Falls leer, zeigen wir Kategorien (und ggf. Stadtteil aus der Karte).'
+                'label' => $categoriesEnabled ? 'Bezeichnung (optional)' : 'Bezeichnung',
+                'required' => !$categoriesEnabled,
+                'help' => $categoriesEnabled
+                    ? 'Falls leer, zeigen wir Kategorien (und ggf. Ort aus der Karte).'
                     : 'Kurzname für den Pin auf der Karte.',
+                'constraints' => $titleConstraints,
             ])
             ->add('street', TextType::class, [
                 'label' => 'Straße und Hausnummer',
@@ -38,17 +47,16 @@ final class NewLocationSubmissionType extends AbstractType
                 ],
             ])
             ->add('postalCode', TextType::class, [
-                'label' => 'PLZ',
+                'label' => 'PLZ / Postcode',
                 'required' => false,
                 'empty_data' => null,
                 'attr' => [
-                    'inputmode' => 'numeric',
                     'autocomplete' => 'postal-code',
                     'data-map-shell-target' => 'postalCode',
                 ],
             ]);
 
-        if ($options['categories_enabled']) {
+        if ($categoriesEnabled) {
             $builder->add('categories', EnumType::class, [
                 'class' => LocationCategory::class,
                 'label' => 'Kategorien',

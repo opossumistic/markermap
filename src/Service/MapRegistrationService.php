@@ -6,7 +6,6 @@ use App\Entity\Map;
 use App\Entity\User;
 use App\Enum\AuthTokenPurpose;
 use App\Enum\MapStatus;
-use App\Map\MapSlug;
 use App\Repository\MapRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,7 +33,6 @@ final class MapRegistrationService
         float $defaultZoom = 11.0,
         ?string $description = null,
     ): Map {
-        $slug = strtolower(trim($slug));
         $name = trim($name);
         $ownerEmail = User::normalizeEmail($ownerEmail);
 
@@ -42,14 +40,8 @@ final class MapRegistrationService
             throw new \DomainException('Name und E-Mail sind Pflicht.');
         }
 
-        if ($slug === '') {
-            $slug = MapSlug::fromTitle($name);
-        }
-        if ($slug === '' || !MapSlug::isValidFormat($slug)) {
-            throw new \DomainException('Slug ist ungültig.');
-        }
-
-        $slug = $this->maps->allocateUniqueSlug($slug);
+        $base = trim($slug) !== '' ? trim($slug) : $name;
+        $slug = $this->maps->allocateUniqueSlug($base);
 
         $user = $this->users->getOrCreate($ownerEmail);
         $map = new Map($slug, $name, $centerLat, $centerLng);
