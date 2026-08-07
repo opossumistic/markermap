@@ -194,6 +194,76 @@ function ops_mkdirp(string $path): bool
 }
 
 /**
+ * Mirror $src → $dest (dirs created, files hardlinked when possible, else copied).
+ * Used to materialize shared/vendor into a release so Composer $baseDir is correct.
+ */
+function ops_mirror_tree(string $src, string $dest): void
+{
+    if (!is_dir($src)) {
+        throw new RuntimeException('mirror source missing: '.$src);
+    }
+
+    if (!ops_mkdirp($dest)) {
+        throw new RuntimeException('Cannot create mirror dest: '.$dest);
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST,
+    );
+
+    /** @var SplFileInfo $item */
+    foreach ($iterator as $item) {
+        $relative = substr($item->getPathname(), \strlen($src) + 1);
+        if ($relative === false || $relative === '') {
+            continue;
+        }
+        $target = $dest.\DIRECTORY_SEPARATOR.$relative;
+
+        if ($item->isDir()) {
+            if (!ops_mkdirp($target)) {
+                throw new RuntimeException('Cannot create dir: '.$target);
+            }
+            continue;
+        }
+
+        if (is_link($target) || is_file($target)) {
+            @unlink($target);
+        }
+
+        // Same-filesystem hardlink keeps disk cheap and preserves path-based Composer $baseDir.
+        if (!@link($item->getPathname(), $target) && !@copy($item->getPathname(), $target)) {
+            throw new RuntimeException('Cannot link/copy: '.$relative);
+        }
+    }
+}
+
+/**
+ * Place a real vendor/ inside the release (not a symlink to shared/vendor).
+ * Composer resolves $baseDir = dirname(vendor); a symlink into shared/ breaks App\Kernel.
+ */
+function ops_materialize_vendor(string $sharedVendor, string $releaseVendor): void
+{
+    if (!is_file($sharedVendor.'/autoload.php')) {
+        throw new RuntimeException('shared vendor incomplete (autoload.php missing).');
+    }
+
+    if (is_link($releaseVendor) || is_file($releaseVendor)) {
+        if (!@unlink($releaseVendor)) {
+            throw new RuntimeException('Cannot remove vendor symlink/file: '.$releaseVendor);
+        }
+    } elseif (is_dir($releaseVendor)) {
+        ops_remove_path($releaseVendor);
+    }
+
+    ops_mirror_tree($sharedVendor, $releaseVendor);
+
+    if (!is_file($releaseVendor.'/autoload.php')) {
+        throw new RuntimeException('vendor materialize failed (autoload.php missing in release).');
+    }
+}
+
+/**
  * Replace $linkPath with a symlink to $target (absolute).
  */
 function ops_force_symlink(string $target, string $linkPath): void

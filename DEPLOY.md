@@ -12,9 +12,9 @@ SFTP-only (kein SSH-Exec). Deshalb kein Deployer: Releases + Symlink-Switch per 
     var/log/
     var/tmp/                     ← vendor-deploy.zip Staging
     public/uploads/              ← UGC-Fotos
-    vendor/                      ← Composer (Zip-Unpack)
+    vendor/                      ← Composer-Cache (Zip-Unpack); wird bei Activate ins Release gespiegelt
   releases/
-    20260807-211500-a1b2c3d/     ← unveränderlicher App-Tree
+    20260807-211500-a1b2c3d/     ← App-Tree + vendor/ (Hardlink/Copy aus shared, kein Symlink)
     …
   current → releases/20260807-…  ← atomarer Switch
 ```
@@ -25,6 +25,8 @@ SFTP-only (kein SSH-Exec). Deshalb kein Deployer: Releases + Symlink-Switch per 
 | **Web-Docroot (Hoster)** | `/public_html/markermap/current/public` |
 
 `current/public` ist Pflicht nach dem Cutover. Zeigt der Hoster noch auf `markermap/public` (Legacy), läuft der alte In-Place-Code weiter — neue Releases sind unsichtbar.
+
+**Wichtig:** `vendor/` darf **nicht** als Symlink nach `shared/vendor` zeigen. Composer setzt `$baseDir = dirname(vendor)` — bei Symlink nach `shared/` wird `App\Kernel` unter `shared/src` gesucht. Activate materialisiert deshalb `shared/vendor` → `releases/{id}/vendor` (Hardlink, sonst Copy).
 
 ## Voraussetzungen Hosting
 
@@ -71,9 +73,9 @@ Workflow-Inputs:
 1. `composer install` + `asset-map:compile` in CI  
 2. Tree-Sync → `releases/{id}/` (**ohne** `vendor/`, ohne Persistenz-Pfade)  
 3. Ops-Scripts zusätzlich nach live `public/_ops/` und ggf. `current/public/_ops/` (Bootstrap vor Docroot-Switch)  
-4. Bei Lock-Change: `vendor-deploy.zip` → `shared/var/tmp/` → `POST /_ops/unpack-vendor.php` → `shared/vendor/`  
+4. Bei Lock-Change: `vendor-deploy.zip` → `shared/var/tmp/` → `POST /_ops/unpack-vendor.php` → `shared/vendor/` (Cache)  
 5. `POST /_ops/ensure-runtime.php`  
-6. `POST /_ops/activate-release.php` → Symlinks in Release + `current` umlegen + Prune  
+6. `POST /_ops/activate-release.php` → Persistenz-Symlinks + **Vendor materialisieren** + `current` umlegen + Prune  
 7. `POST /_ops/migrate`
 
 ## `.env.local` (nur auf dem Server unter `shared/`)
@@ -96,14 +98,14 @@ DEFAULT_URI=https://deine-domain.tld
 
 `%kernel.project_dir%` zeigt auf das aktive Release (`current`); `var/data` ist Symlink nach `shared/var/data`.
 
-`.env` liegt **im Release** (wird deployed). `.env.local` liegt nur in `shared/` und wird per Symlink eingehängt. `public/index.php` setzt `APP_RUNTIME_OPTIONS[project_dir]` explizit — nötig, weil `vendor/` aus `shared/` kommt und Dotenv sonst `shared/.env` sucht.
+`.env` liegt **im Release** (wird deployed). `.env.local` liegt nur in `shared/` und wird per Symlink eingehängt. `public/index.php` setzt defensiv `APP_RUNTIME_OPTIONS[project_dir]` auf das Release.
 
 ## Vendor
 
-- Nie per Dateibaum. Nur Zip nach `shared/var/tmp/` + Unpack nach `shared/vendor/`.  
-- Unveränderte `composer.lock` → Skip (Release linkt dasselbe `shared/vendor`).  
-- `public/vendor/` (MapLibre) gehört zum Release-Tree.  
-- **Nicht** `.env` nach `shared/` kopieren als Dauerlösung — das friert Defaults ein; `project_dir` in `index.php` ist der Fix.
+- Nie per Dateibaum. Zip → `shared/var/tmp/` → Unpack → `shared/vendor/` (Cache).  
+- Unveränderte `composer.lock` → Skip Unpack; Activate spiegelt weiterhin `shared/vendor` ins Release.  
+- Pro Release: **echte** `vendor/`-Tree (Hardlinks wo möglich) — **kein** Symlink nach `shared/`.  
+- `public/vendor/` (MapLibre) gehört zum Release-Tree.
 
 ```bash
 curl -X POST "https://deine-domain.tld/_ops/unpack-vendor.php" \

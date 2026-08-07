@@ -8,11 +8,13 @@
  * Body (form or JSON): release=<id>[&keep=5][&bootstrap_shared=1]
  *
  * Layout:
- *   {deploy}/shared/          .env.local, var/data, var/log, public/uploads, vendor
- *   {deploy}/releases/{id}/   app code
+ *   {deploy}/shared/          .env.local, var/data, var/log, public/uploads, vendor (cache)
+ *   {deploy}/releases/{id}/   app code + materialized vendor/ (hardlink/copy from shared)
  *   {deploy}/current -> releases/{id}
  *
  * Hoster docroot must point to {deploy}/current/public
+ *
+ * Never symlink vendor into the release — Composer $baseDir would become shared/.
  */
 
 declare(strict_types=1);
@@ -79,13 +81,12 @@ try {
         }
     }
 
-    // Shared links into this release.
+    // Shared links into this release (persistence only — not vendor).
     $links = [
         '.env.local' => $shared.'/.env.local',
         'var/data' => $shared.'/var/data',
         'var/log' => $shared.'/var/log',
         'public/uploads' => $shared.'/public/uploads',
-        'vendor' => $shared.'/vendor',
     ];
 
     if (!is_file($shared.'/.env.local')) {
@@ -120,13 +121,18 @@ try {
         throw new RuntimeException('PHP symlink() is disabled on this host — release layout cannot work.');
     }
 
-    // Remove placeholder dirs uploaded by CI before linking.
+    @set_time_limit(600);
+
+    // Remove placeholder dirs uploaded by CI before linking / materializing vendor.
     foreach (['var/data', 'var/log', 'public/uploads', 'vendor'] as $rel) {
         $path = $releasePath.'/'.$rel;
-        if (is_link($path)) {
+        if (is_link($path) || is_file($path)) {
+            if (!@unlink($path) && (is_link($path) || is_file($path))) {
+                throw new RuntimeException('Cannot remove '.$rel.' before activate.');
+            }
             continue;
         }
-        if (is_dir($path) || is_file($path)) {
+        if (is_dir($path)) {
             ops_remove_path($path);
         }
     }
@@ -138,6 +144,8 @@ try {
     foreach ($links as $rel => $target) {
         ops_force_symlink($target, $releasePath.'/'.$rel);
     }
+
+    ops_materialize_vendor($shared.'/vendor', $releasePath.'/vendor');
 
     ops_switch_current($deployRoot, $releasePath);
 
@@ -154,6 +162,7 @@ try {
         'deploy_root' => $deployRoot,
         'shared_created' => $createdShared,
         'pruned' => $pruned,
+        'vendor' => 'materialized',
         'docroot_hint' => $deployRoot.'/current/public',
     ]);
 } catch (Throwable $e) {

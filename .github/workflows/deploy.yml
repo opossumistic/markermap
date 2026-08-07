@@ -61,7 +61,7 @@ jobs:
             echo "vendor.zip will be uploaded + unpacked (force=$FORCE cache_hit=$CACHE_HIT)."
           else
             echo "deploy_vendor=false" >> "$GITHUB_OUTPUT"
-            echo "composer.lock unchanged — reusing shared/vendor."
+            echo "composer.lock unchanged — reusing shared/vendor cache (materialized into release on activate)."
           fi
 
       - name: Setup PHP
