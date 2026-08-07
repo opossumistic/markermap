@@ -1,6 +1,10 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Datenschutz — Tauschmap{% endblock %}
+{% block title %}Datenschutz — Markermap{% endblock %}
+
+{% block robots %}
+    <meta name="robots" content="noindex, follow">
+{% endblock %}
 
 {% block body %}
 <main class="legal">
@@ -12,13 +16,13 @@
     <p>
         Verantwortlich für die Datenverarbeitung auf dieser Website:<br>
         Andreas Freund, Musterstraße 12, 22085 Hamburg,<br>
-        E-Mail: <a href="mailto:kontakt@tauschmap.example">kontakt@tauschmap.example</a><br>
+        E-Mail: <a href="mailto:markermap@freund-wie-der-freund.de">markermap@freund-wie-der-freund.de</a><br>
         Weitere Angaben: <a href="{{ path('legal_impressum') }}">Impressum</a>.
     </p>
 
-    <h2>2. Überblick: Was macht Tauschmap?</h2>
+    <h2>2. Überblick: Was macht Markermap?</h2>
     <p>
-        Tauschmap zeigt öffentlich Tauschboxen in Hamburg auf einer Karte.
+        Markermap zeigt öffentlich Tauschboxen in Hamburg auf einer Karte.
         Nutzerinnen und Nutzer können Standorte vorschlagen, Änderungen melden oder als „nicht mehr vorhanden“ kennzeichnen.
         Vorschläge werden moderiert, bevor Beschreibung, Kategorien und Fotos öffentlich sichtbar werden.
         Bis zur Freigabe erscheint höchstens ein ausgegrauter Pin mit Adresse aus der Geocodierung.
@@ -45,8 +49,11 @@
     <h3>3.3 Standortbestimmung im Browser (optional)</h3>
     <p>
         Über die Schaltfläche „Zum aktuellen Standort“ kann Ihr Browser die Geräteposition (GPS/Netzwerk) abfragen.
-        Das geschieht nur nach Ihrer ausdrücklichen Zustimmung im Browser-Dialog und nur lokal im Browser, um den Kartenausschnitt zu zentrieren.
-        Die Koordinaten werden dabei nicht an unseren Server und nicht an Nominatim übermittelt.
+        Das geschieht nur nach Ihrer ausdrücklichen Zustimmung im Browser-Dialog.
+        Die Position wird ausschließlich lokal im Browser verarbeitet: zur Anzeige eines Standortmarkers auf der Karte
+        und — bei Betätigung der Schaltfläche — zum Zentrieren des Kartenausschnitts.
+        Solange die Berechtigung erteilt bleibt, kann die Anzeige während Ihres Besuchs fortlaufend aktualisiert werden
+        (<code>watchPosition</code>); die Koordinaten werden dabei nicht an unseren Server und nicht an Nominatim übermittelt.
         Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung über den Browser-Dialog; jederzeit widerrufbar in den Browser-/Geräte-Einstellungen).
     </p>
 

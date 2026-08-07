@@ -36,7 +36,7 @@ ADMIN_USERNAME=markermap-mod
 ADMIN_PASSWORD='$2y$...'
 MIGRATE_TOKEN=<langes-zufaelliges-token>
 MAILER_DSN=null://null
-MAILER_FROM="Tauschmap <noreply@deine-domain.tld>"
+MAILER_FROM="Markermap <noreply@deine-domain.tld>"
 ADMIN_NOTIFY_EMAIL=du@deine-domain.tld
 MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
 DEFAULT_URI=https://deine-domain.tld

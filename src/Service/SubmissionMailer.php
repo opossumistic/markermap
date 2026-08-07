@@ -41,7 +41,7 @@ final class SubmissionMailer
 
         $this->send(
             to: $this->adminNotifyEmail,
-            subject: sprintf('[Tauschmap] Neue Meldung: %s (#%s)', $typeLabel, $submission->getId() ?? '?'),
+            subject: sprintf('[Markermap] Neue Meldung: %s (#%s)', $typeLabel, $submission->getId() ?? '?'),
             template: 'email/admin_new_submission.txt.twig',
             context: [
                 'submission' => $submission,
@@ -69,8 +69,8 @@ final class SubmissionMailer
         $this->send(
             to: $email,
             subject: $isNew
-                ? 'Dein Tauschmap-Vorschlag wurde freigegeben'
-                : 'Deine Tauschmap-Änderung wurde übernommen',
+                ? 'Dein Markermap-Vorschlag wurde freigegeben'
+                : 'Deine Markermap-Änderung wurde übernommen',
             template: 'email/submitter_approved.txt.twig',
             context: [
                 'submission' => $submission,

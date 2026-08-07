@@ -236,6 +236,11 @@ body {
     background: color-mix(in srgb, var(--map-ink) 8%, transparent);
 }
 
+.map-search__locate.is-active {
+    opacity: 1;
+    color: #1a73e8;
+}
+
 @media (min-width: 768px) {
     .map-search__locate {
         display: none;
@@ -871,6 +876,46 @@ body {
 .map-marker--picker {
     width: 20px;
     height: 20px;
+}
+
+/* Live GPS: distinct from box pins (teardrop), non-interactive. */
+.map-user-location {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1a73e8;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px rgb(26 115 232 / 35%), 0 1px 4px rgb(0 0 0 / 30%);
+    pointer-events: none;
+}
+
+.map-user-location::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: rgb(26 115 232 / 22%);
+    animation: map-user-pulse 2s ease-out infinite;
+}
+
+@keyframes map-user-pulse {
+    0% {
+        transform: scale(0.65);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-user-location::after {
+        animation: none;
+        opacity: 0.35;
+        transform: scale(1.25);
+    }
 }
 
 .map-popup__status,

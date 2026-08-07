@@ -46,6 +46,14 @@ export default class extends Controller {
     mode = 'browse';
     locationMarkers = [];
     pickMarker = null;
+    /** @type {import('maplibre-gl').Marker|null} */
+    userMarker = null;
+    /** @type {number|null} */
+    geoWatchId = null;
+    /** Fly to next successful GPS fix (locate button). */
+    pendingFlyToUser = false;
+    /** @type {{ lng: number, lat: number }|null} */
+    lastUserLngLat = null;
     maplibregl = null;
     reverseTimer = null;
     reverseAbort = null;
@@ -77,6 +85,7 @@ export default class extends Controller {
             this.map.on('load', () => {
                 this.map.resize();
                 this.loadLocations();
+                this.maybeStartUserLocationWatch();
                 if (this.openAddValue) {
                     this.startAdd();
                 }
@@ -111,6 +120,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        this.stopUserLocationWatch();
         this.clearLocationMarkers();
         this.cancelReverse();
         this.clearSearchMessageTimer();
@@ -167,7 +177,7 @@ export default class extends Controller {
     }
 
     /**
-     * Pan map to browser GPS position. No pin / pick mode — orientation only.
+     * Center map on GPS and keep a live user marker via watchPosition.
      */
     goToCurrentLocation(event) {
         event?.preventDefault();
@@ -175,47 +185,149 @@ export default class extends Controller {
             return;
         }
 
-        if (!window.isSecureContext || !navigator.geolocation) {
+        if (!this.canUseGeolocation()) {
             this.showSearchMessage('Standortbestimmung ist hier nicht verfügbar.');
             return;
         }
 
+        this.pendingFlyToUser = true;
         this.setLocateBusy(true);
         this.showSearchMessage('Standort wird ermittelt…', { dismissAfter: 0 });
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                this.setLocateBusy(false);
-                const { latitude: lat, longitude: lng } = position.coords;
-                if (!this.inBounds(lng, lat)) {
-                    this.showSearchMessage('Standort liegt außerhalb Hamburgs.');
-                    return;
-                }
+        if (this.lastUserLngLat) {
+            this.flyToUserIfPending(this.lastUserLngLat.lng, this.lastUserLngLat.lat);
+        }
 
-                this.clearSearchResults();
-                this.map.flyTo({
-                    center: [lng, lat],
-                    zoom: Math.max(this.map.getZoom(), 14),
-                });
-            },
-            (error) => {
-                this.setLocateBusy(false);
-                let message = 'Standortbestimmung fehlgeschlagen.';
-                if (error.code === error.PERMISSION_DENIED) {
-                    message = 'Standortzugriff wurde verweigert.';
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    message = 'Standort konnte nicht ermittelt werden.';
-                } else if (error.code === error.TIMEOUT) {
-                    message = 'Standortbestimmung hat zu lange gedauert.';
-                }
-                this.showSearchMessage(message);
-            },
+        this.startUserLocationWatch();
+    }
+
+    canUseGeolocation() {
+        return Boolean(window.isSecureContext && navigator.geolocation);
+    }
+
+    /**
+     * Resume tracking quietly when the browser already granted permission.
+     */
+    async maybeStartUserLocationWatch() {
+        if (!this.canUseGeolocation() || this.geoWatchId !== null) {
+            return;
+        }
+
+        try {
+            if (!navigator.permissions?.query) {
+                return;
+            }
+            const status = await navigator.permissions.query({ name: 'geolocation' });
+            if (status.state === 'granted') {
+                this.startUserLocationWatch();
+            }
+        } catch {
+            // Permissions API unsupported or geolocation name rejected — wait for locate tap.
+        }
+    }
+
+    startUserLocationWatch() {
+        if (!this.canUseGeolocation() || this.geoWatchId !== null) {
+            return;
+        }
+
+        this.geoWatchId = navigator.geolocation.watchPosition(
+            (position) => this.onUserPosition(position),
+            (error) => this.onUserPositionError(error),
             {
                 enableHighAccuracy: true,
                 timeout: 12000,
-                maximumAge: 60000,
+                maximumAge: 10000,
             },
         );
+        this.setLocateActive(true);
+    }
+
+    stopUserLocationWatch() {
+        if (this.geoWatchId !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(this.geoWatchId);
+            this.geoWatchId = null;
+        }
+        this.pendingFlyToUser = false;
+        this.lastUserLngLat = null;
+        this.removeUserMarker();
+        this.setLocateBusy(false);
+        this.setLocateActive(false);
+    }
+
+    onUserPosition(position) {
+        this.setLocateBusy(false);
+        const { latitude: lat, longitude: lng } = position.coords;
+        this.lastUserLngLat = { lng, lat };
+        this.upsertUserMarker(lng, lat);
+        this.flyToUserIfPending(lng, lat);
+    }
+
+    onUserPositionError(error) {
+        this.setLocateBusy(false);
+
+        if (error.code === error.PERMISSION_DENIED) {
+            this.stopUserLocationWatch();
+            this.showSearchMessage('Standortzugriff wurde verweigert.');
+            return;
+        }
+
+        // Mid-watch glitches: keep marker, only surface errors when user asked to locate.
+        if (!this.pendingFlyToUser) {
+            return;
+        }
+
+        this.pendingFlyToUser = false;
+        let message = 'Standortbestimmung fehlgeschlagen.';
+        if (error.code === error.POSITION_UNAVAILABLE) {
+            message = 'Standort konnte nicht ermittelt werden.';
+        } else if (error.code === error.TIMEOUT) {
+            message = 'Standortbestimmung hat zu lange gedauert.';
+        }
+        this.showSearchMessage(message);
+    }
+
+    flyToUserIfPending(lng, lat) {
+        if (!this.pendingFlyToUser || !this.map) {
+            return;
+        }
+
+        this.pendingFlyToUser = false;
+        if (!this.inBounds(lng, lat)) {
+            this.showSearchMessage('Standort liegt außerhalb Hamburgs.');
+            return;
+        }
+
+        this.clearSearchResults();
+        this.map.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(this.map.getZoom(), 14),
+        });
+    }
+
+    upsertUserMarker(lng, lat) {
+        if (!this.map || !this.maplibregl) {
+            return;
+        }
+
+        if (!this.userMarker) {
+            const el = document.createElement('div');
+            el.className = 'map-user-location';
+            el.setAttribute('aria-hidden', 'true');
+            this.userMarker = new this.maplibregl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([lng, lat])
+                .addTo(this.map);
+            return;
+        }
+
+        this.userMarker.setLngLat([lng, lat]);
+    }
+
+    removeUserMarker() {
+        if (this.userMarker) {
+            this.userMarker.remove();
+            this.userMarker = null;
+        }
     }
 
     setLocateBusy(busy) {
@@ -224,6 +336,14 @@ export default class extends Controller {
         }
         this.locateButtonTarget.disabled = busy;
         this.locateButtonTarget.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
+    setLocateActive(active) {
+        if (!this.hasLocateButtonTarget) {
+            return;
+        }
+        this.locateButtonTarget.classList.toggle('is-active', active);
+        this.locateButtonTarget.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
 
     renderSearchResults(results) {

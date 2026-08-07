@@ -71,7 +71,7 @@ final class SeedCommunityLocationsCommand extends Command
 
         foreach ($rows as $row) {
             $category = LocationCategory::tryFrom((string) ($row['category'] ?? 'other')) ?? LocationCategory::Other;
-            // Tauschmap = Tauschboxen; reine Bücherzellen sind Rauschen und werden nicht importiert.
+            // Markermap = Tauschboxen; reine Bücherzellen sind Rauschen und werden nicht importiert.
             if ($category === LocationCategory::Books) {
                 ++$skipped;
                 continue;
