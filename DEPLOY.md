@@ -98,7 +98,7 @@ DEFAULT_URI=https://deine-domain.tld
 
 `%kernel.project_dir%` zeigt auf das aktive Release (`current`); `var/data` ist Symlink nach `shared/var/data`.
 
-`.env` liegt **im Release** (wird deployed). `.env.local` liegt nur in `shared/` und wird per Symlink eingehängt. `public/index.php` setzt defensiv `APP_RUNTIME_OPTIONS[project_dir]` auf das Release.
+`.env` liegt **im Release** (wird deployed; CI schließt nur `.env.local` / `.env.*.local` aus). `.env.local` liegt nur in `shared/` und wird per Symlink eingehängt. `public/index.php` setzt defensiv `APP_RUNTIME_OPTIONS[project_dir]` auf das Release.
 
 ## Vendor
 
@@ -144,6 +144,10 @@ Legacy-`HomeController.php` noch unter altem Docroot. Cutover (Docroot → `curr
 ### `shared/vendor/autoload.php missing`
 
 Deploy mit `force_vendor: true`.
+
+### `Unable to read …/releases/…/.env`
+
+Committed `.env` fehlt im Release — früher hat CI `--exclude=.env*` alles blockiert. Fix: nur `.env.local` / `.env.*.local` excluden. Sofort: `.env` aus dem Repo nach `releases/{id}/.env` hochladen (nicht nach `shared/`).
 
 ### `shared/.env.local missing`
 

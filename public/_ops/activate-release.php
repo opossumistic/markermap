@@ -147,6 +147,10 @@ try {
 
     ops_materialize_vendor($shared.'/vendor', $releasePath.'/vendor');
 
+    if (is_link($releasePath.'/vendor')) {
+        throw new RuntimeException('vendor must not be a symlink after materialize.');
+    }
+
     ops_switch_current($deployRoot, $releasePath);
 
     $pruned = ops_prune_releases($releasesDir, $releaseId, $keep);
