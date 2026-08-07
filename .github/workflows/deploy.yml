@@ -247,6 +247,7 @@ jobs:
             echo "put public/_ops/activate-release.php activate-release.php"
             echo "put public/_ops/unpack-vendor.php unpack-vendor.php"
             echo "put public/_ops/ensure-runtime.php ensure-runtime.php"
+            echo "put public/_ops/db-status.php db-status.php"
           } > "$BATCH"
           sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
             -o StrictHostKeyChecking=no \
@@ -260,6 +261,7 @@ jobs:
             echo "put public/_ops/activate-release.php activate-release.php"
             echo "put public/_ops/unpack-vendor.php unpack-vendor.php"
             echo "put public/_ops/ensure-runtime.php ensure-runtime.php"
+            echo "put public/_ops/db-status.php db-status.php"
           } > "$BATCH"
           sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
             -o StrictHostKeyChecking=no \
