@@ -198,6 +198,14 @@ function ops_mkdirp(string $path): bool
  */
 function ops_force_symlink(string $target, string $linkPath): void
 {
+    if (!function_exists('symlink')) {
+        throw new RuntimeException('symlink() disabled');
+    }
+
+    if (!file_exists($target) && !is_link($target)) {
+        throw new RuntimeException('symlink target missing: '.$target);
+    }
+
     if (is_link($linkPath) || is_file($linkPath)) {
         if (!@unlink($linkPath)) {
             throw new RuntimeException('Cannot remove existing path: '.$linkPath);
@@ -207,7 +215,9 @@ function ops_force_symlink(string $target, string $linkPath): void
     }
 
     if (!@symlink($target, $linkPath)) {
-        throw new RuntimeException('symlink failed: '.$linkPath.' → '.$target);
+        $err = error_get_last();
+        $detail = \is_array($err) ? ($err['message'] ?? '') : '';
+        throw new RuntimeException('symlink failed: '.$linkPath.' → '.$target.($detail !== '' ? ' ('.$detail.')' : ''));
     }
 }
 

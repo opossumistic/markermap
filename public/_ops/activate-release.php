@@ -93,7 +93,31 @@ try {
     }
 
     if (!is_file($shared.'/vendor/autoload.php')) {
-        throw new RuntimeException('shared/vendor/autoload.php missing — run unpack-vendor first.');
+        $legacyVendor = $deployRoot.'/vendor';
+        if (is_file($legacyVendor.'/autoload.php') && is_dir($legacyVendor) && !is_link($legacyVendor)) {
+            // First cutover: reuse in-place vendor (same filesystem rename is cheap).
+            $sharedVendor = $shared.'/vendor';
+            if (is_dir($sharedVendor) && !is_file($sharedVendor.'/autoload.php')) {
+                ops_remove_path($sharedVendor);
+            }
+            if (is_dir($sharedVendor) || is_link($sharedVendor) || is_file($sharedVendor)) {
+                throw new RuntimeException('shared/vendor exists but is incomplete — remove it or run unpack-vendor.');
+            }
+            if (!@rename($legacyVendor, $sharedVendor)) {
+                throw new RuntimeException(
+                    'shared/vendor/autoload.php missing and cannot move legacy vendor — re-run deploy with force_vendor=true.',
+                );
+            }
+            $createdShared[] = 'vendor (moved from legacy)';
+        } else {
+            throw new RuntimeException(
+                'shared/vendor/autoload.php missing — run unpack-vendor (workflow: force_vendor=true).',
+            );
+        }
+    }
+
+    if (!function_exists('symlink')) {
+        throw new RuntimeException('PHP symlink() is disabled on this host — release layout cannot work.');
     }
 
     // Remove placeholder dirs uploaded by CI before linking.

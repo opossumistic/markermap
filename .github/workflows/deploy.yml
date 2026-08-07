@@ -46,7 +46,7 @@ jobs:
         id: deploy-meta
         with:
           path: .deploy-meta
-          key: deploy-meta-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
+          key: deploy-meta-releases-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
 
       - name: Check if vendor upload is needed
         id: vendor-check
@@ -303,12 +303,15 @@ jobs:
           fi
           BASE="${OPS_BASE_URL%/}"
           echo "POST ${BASE}/_ops/ensure-runtime.php"
-          curl -fsS -X POST "${BASE}/_ops/ensure-runtime.php" \
+          HTTP_CODE=$(curl -sS -X POST "${BASE}/_ops/ensure-runtime.php" \
             -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
             -H "Accept: application/json" \
             --max-time 60 \
-            -o /tmp/ensure.json
+            -o /tmp/ensure.json \
+            -w "%{http_code}")
+          echo "HTTP ${HTTP_CODE}"
           cat /tmp/ensure.json
+          echo
           php -r '$j=json_decode(file_get_contents("/tmp/ensure.json"), true); exit(!empty($j["ok"])?0:1);'
 
       - name: Unpack vendor into shared/vendor
@@ -324,12 +327,15 @@ jobs:
           fi
           BASE="${OPS_BASE_URL%/}"
           echo "POST ${BASE}/_ops/unpack-vendor.php"
-          curl -fsS -X POST "${BASE}/_ops/unpack-vendor.php" \
+          HTTP_CODE=$(curl -sS -X POST "${BASE}/_ops/unpack-vendor.php" \
             -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
             -H "Accept: application/json" \
             --max-time 600 \
-            -o /tmp/unpack.json
+            -o /tmp/unpack.json \
+            -w "%{http_code}")
+          echo "HTTP ${HTTP_CODE}"
           cat /tmp/unpack.json
+          echo
           php -r '$j=json_decode(file_get_contents("/tmp/unpack.json"), true); exit(!empty($j["ok"])?0:1);'
 
       - name: Activate release (symlink shared + switch current)
@@ -350,14 +356,17 @@ jobs:
           BOOTSTRAP_FLAG=0
           if [ "$BOOTSTRAP" = "true" ]; then BOOTSTRAP_FLAG=1; fi
           echo "POST ${BASE}/_ops/activate-release.php release=${RELEASE_ID}"
-          curl -fsS -X POST "${BASE}/_ops/activate-release.php" \
+          HTTP_CODE=$(curl -sS -X POST "${BASE}/_ops/activate-release.php" \
             -H "X-Migrate-Token: ${MIGRATE_TOKEN}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             --data "release=${RELEASE_ID}&keep=${KEEP}&bootstrap_shared=${BOOTSTRAP_FLAG}" \
             --max-time 120 \
-            -o /tmp/activate.json
+            -o /tmp/activate.json \
+            -w "%{http_code}")
+          echo "HTTP ${HTTP_CODE}"
           cat /tmp/activate.json
+          echo
           php -r '$j=json_decode(file_get_contents("/tmp/activate.json"), true); exit(!empty($j["ok"])?0:1);'
 
       - name: Run migrations on server
@@ -395,4 +404,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .deploy-meta
-          key: deploy-meta-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
+          key: deploy-meta-releases-${{ github.ref_name }}-${{ steps.lock-hash.outputs.current_hash }}
