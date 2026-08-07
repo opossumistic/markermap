@@ -71,6 +71,15 @@ if (!is_file($releasePath.'/public/index.php')) {
     ops_json_exit(['ok' => false, 'error' => 'release_incomplete', 'hint' => 'public/index.php missing'], 400);
 }
 
+if (!is_file($releasePath.'/.env')) {
+    ops_json_exit([
+        'ok' => false,
+        'error' => 'release_missing_dotenv',
+        'hint' => 'Committed .env missing in release (SFTP put -r skips dotfiles). Upload .env or re-run deploy.',
+        'path' => 'releases/'.$releaseId.'/.env',
+    ], 400);
+}
+
 try {
     $createdShared = ops_ensure_shared_layout($shared, $deployRoot, $bootstrapShared);
 

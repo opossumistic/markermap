@@ -226,6 +226,31 @@ jobs:
           sftp_only: true
           rsyncArgs: ${{ steps.rsync.outputs.args }}
 
+      # wlixcc/SFTP-Deploy-Action uploads via `put -r filtered/*` — shell globs skip dotfiles.
+      # Committed `.env` (defaults, no secrets) must be put explicitly.
+      - name: Upload release .env (dotfile)
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+        run: |
+          set -euo pipefail
+          test -f .env
+          REMOTE="${SFTP_REMOTE_PATH%/}"
+          BATCH="$(mktemp)"
+          {
+            echo "cd ${REMOTE}/releases/${RELEASE_ID}"
+            echo "put .env .env"
+          } > "$BATCH"
+          sshpass -e sftp -oBatchMode=no -b "$BATCH" -P "$SFTP_PORT" \
+            -o StrictHostKeyChecking=no \
+            "${SFTP_USERNAME}@${SFTP_HOST}"
+          rm -f "$BATCH"
+          echo "Uploaded .env to releases/${RELEASE_ID}/"
+
       - name: Bootstrap live _ops scripts (callable before switch)
         env:
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}

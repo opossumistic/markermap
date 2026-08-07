@@ -147,7 +147,7 @@ Deploy mit `force_vendor: true`.
 
 ### `Unable to read …/releases/…/.env`
 
-Committed `.env` fehlt im Release — früher hat CI `--exclude=.env*` alles blockiert. Fix: nur `.env.local` / `.env.*.local` excluden. Sofort: `.env` aus dem Repo nach `releases/{id}/.env` hochladen (nicht nach `shared/`).
+Die SFTP-Action lädt per `put -r …/*` hoch — **Dotfiles** (`.env`) fallen durch. Pipeline hat deshalb einen expliziten `put .env`-Step. Sofort: Repo-`.env` nach `releases/{id}/.env` (bzw. `current/../` = Release-Root) hochladen.
 
 ### `shared/.env.local missing`
 
