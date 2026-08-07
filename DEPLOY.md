@@ -96,11 +96,14 @@ DEFAULT_URI=https://deine-domain.tld
 
 `%kernel.project_dir%` zeigt auf das aktive Release (`current`); `var/data` ist Symlink nach `shared/var/data`.
 
+`.env` liegt **im Release** (wird deployed). `.env.local` liegt nur in `shared/` und wird per Symlink eingehängt. `public/index.php` setzt `APP_RUNTIME_OPTIONS[project_dir]` explizit — nötig, weil `vendor/` aus `shared/` kommt und Dotenv sonst `shared/.env` sucht.
+
 ## Vendor
 
 - Nie per Dateibaum. Nur Zip nach `shared/var/tmp/` + Unpack nach `shared/vendor/`.  
 - Unveränderte `composer.lock` → Skip (Release linkt dasselbe `shared/vendor`).  
-- `public/vendor/` (MapLibre) gehört zum Release-Tree.
+- `public/vendor/` (MapLibre) gehört zum Release-Tree.  
+- **Nicht** `.env` nach `shared/` kopieren als Dauerlösung — das friert Defaults ein; `project_dir` in `index.php` ist der Fix.
 
 ```bash
 curl -X POST "https://deine-domain.tld/_ops/unpack-vendor.php" \
