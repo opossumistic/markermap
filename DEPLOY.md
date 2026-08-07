@@ -91,6 +91,12 @@ Voraussetzung: `vendor-deploy.zip` liegt bereits unter `var/tmp/` auf dem Server
 - `.env*` (Server-`.env.local` bleibt)
 - Tests / `.ddev` / Konzept-Markdown
 
+## Orphan-Dateien (SFTP löscht nicht)
+
+Tree-Sync per SFTP ist **additiv**: lokal gelöschte PHP-Dateien bleiben auf dem Server und können alte Attribute-Routes weiter bedienen (Symptom: `/` rendert noch `HomeController` → Twig `Variable "map" does not exist`).
+
+`POST /_ops/ensure-runtime.php` entfernt eine Allowlist bekannter Orphans und wischt `var/cache/{prod,dev}`. Neue Orphans bei Bedarf in `public/_ops/ensure-runtime.php` ergänzen — kein blindes Remote-`--delete`.
+
 ## Troubleshooting: `unable to open database file`
 
 Ursache fast immer: Ordner `var/data/` fehlt oder PHP darf dort nicht schreiben (`var/data` ist Deploy-Exclude).

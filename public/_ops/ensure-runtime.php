@@ -50,6 +50,7 @@ $dirs = [
 $created = [];
 $existing = [];
 $errors = [];
+$removed = [];
 
 foreach ($dirs as $relative) {
     $path = $projectDir.'/'.$relative;
@@ -68,6 +69,42 @@ foreach ($dirs as $relative) {
     }
 }
 
+/*
+ * SFTP tree sync never deletes remote orphans. Attribute-routed leftovers
+ * (e.g. old HomeController on "/") win over the new PlatformController.
+ * Keep this allowlist tight — only paths removed from git on purpose.
+ */
+$orphanFiles = [
+    'src/Controller/HomeController.php',
+];
+
+foreach ($orphanFiles as $relative) {
+    $path = $projectDir.'/'.$relative;
+    if (!is_file($path)) {
+        continue;
+    }
+    if (@unlink($path)) {
+        $removed[] = $relative;
+    } else {
+        $errors[] = ['path' => $relative, 'error' => 'unlink_failed'];
+    }
+}
+
+$cacheCleared = [];
+foreach (['var/cache/prod', 'var/cache/dev'] as $cacheRelative) {
+    $cachePath = $projectDir.'/'.$cacheRelative;
+    if (!is_dir($cachePath)) {
+        continue;
+    }
+    if (ops_remove_tree($cachePath)) {
+        $cacheCleared[] = $cacheRelative;
+        // Recreate empty dir so next request can warm cache.
+        @mkdir($cachePath, 0775, true);
+    } else {
+        $errors[] = ['path' => $cacheRelative, 'error' => 'cache_clear_failed'];
+    }
+}
+
 $dbRelative = 'var/data/app.db';
 $dbPath = $projectDir.'/'.$dbRelative;
 $dbWritableDir = is_dir($projectDir.'/var/data') && is_writable($projectDir.'/var/data');
@@ -79,6 +116,8 @@ echo json_encode([
     'ok' => $ok,
     'created' => $created,
     'existing' => $existing,
+    'removed' => $removed,
+    'cache_cleared' => $cacheCleared,
     'errors' => $errors,
     'sqlite' => [
         'path' => $dbRelative,
@@ -89,6 +128,38 @@ echo json_encode([
             : 'PHP cannot write var/data — fix permissions (chmod 775) via FTP/File-Manager.',
     ],
 ], JSON_UNESCAPED_SLASHES);
+
+/**
+ * @return bool true when path is gone (or was never there)
+ */
+function ops_remove_tree(string $path): bool
+{
+    if (!file_exists($path)) {
+        return true;
+    }
+    if (is_file($path) || is_link($path)) {
+        return @unlink($path);
+    }
+    if (!is_dir($path)) {
+        return false;
+    }
+
+    $items = scandir($path);
+    if ($items === false) {
+        return false;
+    }
+
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        if (!ops_remove_tree($path.\DIRECTORY_SEPARATOR.$item)) {
+            return false;
+        }
+    }
+
+    return @rmdir($path);
+}
 
 function ops_read_env_value(string $projectDir, string $key): string
 {
