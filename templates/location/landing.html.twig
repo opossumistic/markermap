@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ location.displayLabel }} · {{ map.name }}{% endblock %}
+
+{% block robots %}
+    {% if isRemoved or location.status.value == 'pending' %}
+        <meta name="robots" content="noindex, follow">
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+<main class="location-landing">
+    <p class="location-landing__brand">
+        <a href="{{ path('platform_home') }}">Markermap</a>
+        <span aria-hidden="true">·</span>
+        <a href="{{ mapPath }}">{{ map.name }}</a>
+    </p>
+
+    <h1>{{ location.displayLabel }}</h1>
+
+    {% if isRemoved %}
+        <p class="location-landing__status location-landing__status--removed">
+            Dieser Standort ist nicht mehr aktiv.
+        </p>
+        <p class="location-landing__lead">
+            Schau auf der Karte nach anderen Einträgen in der Nähe.
+        </p>
+        <p class="location-landing__actions">
+            <a class="map-btn" href="{{ mapPath }}">Zur Karte {{ map.name }}</a>
+        </p>
+    {% else %}
+        <p class="location-landing__lead">
+            Eintrag auf der Community-Karte <strong>{{ map.name }}</strong>
+            {% if location.district %} in {{ location.district }}{% endif %}.
+            Scanne, finde, nutze — und melde Änderungen, wenn etwas nicht stimmt.
+        </p>
+
+        {% if location.street or location.postalCode or location.district %}
+            <p class="location-landing__meta">
+                {% if location.street %}{{ location.street }}{% endif %}
+                {% if location.postalCode or location.district %}
+                    {% if location.street %}<br>{% endif %}
+                    {{ location.postalCode }}{% if location.postalCode and location.district %} {% endif %}{{ location.district }}
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if location.status.value == 'disputed' %}
+            <p class="location-landing__status">Hinweis: Zu diesem Eintrag gibt es offene Meldungen.</p>
+        {% elseif location.status.value == 'pending' %}
+            <p class="location-landing__status">Hinweis: Noch nicht freigegeben — auf der Karte als Vorschlag sichtbar.</p>
+        {% endif %}
+
+        <p class="location-landing__actions">
+            {% if mapFocusPath %}
+                <a class="map-btn" href="{{ mapFocusPath }}">Auf Karte öffnen</a>
+            {% endif %}
+            <a class="location-landing__secondary" href="{{ mapPath }}">Alle Einträge auf {{ map.name }}</a>
+        </p>
+    {% endif %}
+</main>
+{% endblock %}

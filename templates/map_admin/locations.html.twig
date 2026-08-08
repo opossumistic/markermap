@@ -33,6 +33,10 @@
                             <span class="admin-card__status">{{ location.status.value }}</span>
                         </header>
                         <p class="admin-card__text">{{ location.displayLabel }}</p>
+                        <p class="admin-card__meta">
+                            <a href="{{ path('location_landing', { mapSlug: map.slug, publicId: location.publicId }) }}">Landing</a>
+                            · <a href="{{ path('map_admin_location_qr', { mapSlug: map.slug, id: location.id }) }}">QR-Code (SVG)</a>
+                        </p>
                         {% if location.status.value != 'removed' %}
                             <form method="post" action="{{ path('map_admin_location_remove', { mapSlug: map.slug, id: location.id }) }}" onsubmit="return confirm('Location #{{ location.id }} entfernen?');">
                                 <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ location.id) }}">

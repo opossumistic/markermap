@@ -62,4 +62,12 @@ class LocationRepository extends ServiceEntityRepository
 
         return $location;
     }
+
+    public function findOneByMapAndPublicId(Map $map, string $publicId): ?Location
+    {
+        return $this->findOneBy([
+            'map' => $map,
+            'publicId' => $publicId,
+        ]);
+    }
 }

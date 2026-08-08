@@ -122,6 +122,30 @@ Request /maps/{slug}/…
 - `/` = Verzeichnis öffentlicher Maps + CTA „Map anlegen“ (Basis erledigt)
 - Legal zentral (Plattform); Map-Kontext zeigt Owner-/Notify-Kontakt kurz (offen)
 
+### Phase 6 — Location-QR (Discovery vor Ort)
+
+**Ziel:** Physischer Einstieg an einem Standort → stabile Canonical-URL → SSR-Landing verkauft die Map → Soft-Open mit Marker-Fokus.
+
+#### Entscheidungen
+
+| Thema | Entscheidung |
+|---|---|
+| Primärzweck | Discoverability vor Ort (Ops/Melden kommt gratis mit) |
+| Identifier | Immutable `Location.publicId` (12 Zeichen, print-sicheres Alphabet) — **nie** DB-id auf Papier |
+| Canonical | `/maps/{slug}/l/{publicId}` |
+| Soft-Open | CTA → `/maps/{slug}?focus={id}` (bestehender Map-Shell-Hook; Query nur intern) |
+| Inactive/Removed | Landing mit Status + Link zur Map (kein 404) |
+| QR | SVG on-demand aus Canonical-URL; kein persistiertes Asset |
+| Download | Nur Map-Owner unter `/maps/{slug}/admin/locations` |
+| Analytics / Map-QR / PDF-Sticker | Nice, nicht MVP |
+
+#### Umsetzung
+
+- Entity-Feld + Unique-Index + Backfill Bestand
+- `LocationLandingController` + schlanke Twig-Landing
+- `QrCodeGenerator` (SVG) + Admin-Download-Route
+- Kein Scan-Tracking, kein öffentlicher QR-Button am Detail-Panel
+
 ## Must vs. Nice
 
 ### Must (MVP)
@@ -145,6 +169,8 @@ Request /maps/{slug}/…
 - Map-Verzeichnis mit Suche/Ranking
 - Billing / Soft-Limits
 - „Meine Maps“-Übersicht für Owner (nach User-Modell triviale Erweiterung)
+- Map-QR (Flyer/Events), Scan-Analytics, Print-PDF/Sticker-Branding
+- Öffentlicher QR-Download am Location-Panel
 
 ## Komplexität klein halten
 
@@ -177,14 +203,15 @@ Unverändert Shared Hosting (siehe `DEPLOY.md`). Multi-Tenant erhöht nur Daten-
 | 3 Admin scoped | Owner-Admin erledigt; Super-Admin `/admin` global; UX-Labels Owner vs. Plattform |
 | 4 Generik | **Kern erledigt** — offen nur Nice: Bounds-UI beim Create; HH-Districts-Whitelist bewusst unverkabelt |
 | 5 Plattform-Oberfläche | Basis (`/`, Create-CTA) da; Owner-Kontakt auf Map optional |
+| 6 Location-QR | publicId + SSR-Landing + Owner-Admin SVG-Download |
 
 Branch: `feature/whitelabel-multi-map`.
 
 ### Handoff-Prompt (neuer Chat)
 
 ```
-Branch feature/whitelabel-multi-map. Lies docs/WHITELABEL.md Phase 4/5.
-Phase-4-Kern erledigt (ReverseGeocoder map-bounds, generic districts, Ort-Defaults, Legal).
-Optional: Bounds-UI beim Map-Create; Phase 5 Owner-Kontakt auf Map-Seite.
-Nicht anfassen: Ein-Login, Custom Domains. ddev nutzen.
+Branch feature/whitelabel-multi-map. Lies docs/WHITELABEL.md Phase 6.
+Location-QR: publicId, /maps/{slug}/l/{publicId}, Admin-SVG.
+Optional: Map-QR, Bounds-UI Create, Phase 5 Owner-Kontakt.
+Nicht anfassen: Scan-Analytics, Ein-Login, Custom Domains. ddev nutzen.
 ```

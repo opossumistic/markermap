@@ -4,12 +4,14 @@ namespace App\Entity;
 
 use App\Enum\LocationCategory;
 use App\Enum\LocationStatus;
+use App\Map\LocationPublicId;
 use App\Repository\LocationRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: LocationRepository::class)]
 #[ORM\Table(name: 'locations')]
+#[ORM\UniqueConstraint(name: 'uniq_locations_public_id', columns: ['public_id'])]
 #[ORM\HasLifecycleCallbacks]
 class Location
 {
@@ -21,6 +23,10 @@ class Location
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Map $map;
+
+    /** Immutable public id for QR / deep links (never reuse DB id on paper). */
+    #[ORM\Column(length: 12)]
+    private string $publicId;
 
     #[ORM\Column(length: 180, nullable: true)]
     private ?string $title = null;
@@ -69,9 +75,10 @@ class Location
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct(Map $map)
+    public function __construct(Map $map, ?string $publicId = null)
     {
         $this->map = $map;
+        $this->publicId = $publicId ?? LocationPublicId::generate();
         $now = new \DateTimeImmutable();
         $this->createdAt = $now;
         $this->updatedAt = $now;
@@ -98,6 +105,11 @@ class Location
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getPublicId(): string
+    {
+        return $this->publicId;
     }
 
     public function getTitle(): ?string

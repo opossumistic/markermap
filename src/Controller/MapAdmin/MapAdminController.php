@@ -8,8 +8,10 @@ use App\Map\MapSlug;
 use App\Repository\LocationRepository;
 use App\Repository\SubmissionRepository;
 use App\Security\MapAdminVoter;
+use App\Service\LocationDeepLink;
 use App\Service\LocationWorkflow;
 use App\Service\MapRegistrationService;
+use App\Service\QrCodeGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -140,6 +142,30 @@ final class MapAdminController extends AbstractController
             $redirect === 'map_admin_inbox' ? 'map_admin_inbox' : 'map_admin_locations',
             ['mapSlug' => $map->getSlug()],
         );
+    }
+
+    #[Route('/locations/{id}/qr.svg', name: 'map_admin_location_qr', methods: ['GET'], requirements: ['id' => '\d+'])]
+    #[IsGranted(MapAdminVoter::ADMIN, 'map')]
+    public function locationQr(
+        Map $map,
+        int $id,
+        LocationRepository $locations,
+        LocationDeepLink $deepLink,
+        QrCodeGenerator $qrCodes,
+    ): Response {
+        $location = $locations->find($id);
+        if ($location === null || $location->getMap()->getId() !== $map->getId()) {
+            throw $this->createNotFoundException();
+        }
+
+        $svg = $qrCodes->svg($deepLink->absoluteUrl($location));
+        $filename = sprintf('markermap-%s-%s.svg', $map->getSlug(), $location->getPublicId());
+
+        return new Response($svg, Response::HTTP_OK, [
+            'Content-Type' => 'image/svg+xml; charset=UTF-8',
+            'Content-Disposition' => sprintf('attachment; filename="%s"', $filename),
+            'Cache-Control' => 'no-store',
+        ]);
     }
 
     private function assertSubmissionOnMap(Map $map, Submission $submission): void
